@@ -1,19 +1,19 @@
 # Plan DevOps del Proyecto Móvil - UTrueque
 
 ## 1. Resumen del Caso y Objetivos
-UTrueque es una aplicación móvil diseñada para facilitar la compra, venta, trueque y donación de insumos académicos dentro de la comunidad universitaria[cite: 2]. Garantiza un entorno seguro exigiendo autenticación mediante correo institucional (`@alumno.utsjr.edu.mx`) y filtrado por carrera y facultad[cite: 2].
+UTrueque es una aplicación móvil diseñada para facilitar la compra, venta, trueque y donación de insumos académicos dentro de la comunidad universitaria. Garantiza un entorno seguro exigiendo autenticación mediante correo institucional (`@alumno.utsjr.edu.mx`) y filtrado por carrera.
 
 ### Objetivos
-* Implementar un ciclo ágil DevOps estructurado en 10 Sprints de 1 semana[cite: 2].
+* Implementar un ciclo ágil DevOps estructurado en 10 Sprints de 1 semana.
 * Integrar pruebas continuas para asegurar una estabilidad del 99.5% libre de fallos (Crash-Free Rate).
 * Automatizar la integración y despliegue del proyecto mediante GitHub Actions y Firebase.
 
 ---
 
 ## 2. Arquitectura General y Dependencias
-* **Cliente Móvil:** Desarrollado en Flutter (Dart) con arquitectura limpia[cite: 2].
-* **Backend como Servicio (BaaS):** Supabase (PostgreSQL, Autenticación y WebSockets Realtime)[cite: 2].
-* **Servicio Externo:** Firebase Cloud Messaging (FCM) para notificaciones push[cite: 2].
+* **Cliente Móvil:** Desarrollado en Flutter (Dart) con arquitectura limpia.
+* **Backend como Servicio (BaaS):** Supabase (PostgreSQL, Autenticación y WebSockets Realtime).
+* **Servicio Externo:** Firebase Cloud Messaging (FCM) para notificaciones push.
 
 ---
 
@@ -35,46 +35,46 @@ UTrueque es una aplicación móvil diseñada para facilitar la compra, venta, tr
 ---
 
 ## 4. Versionamiento y Ramificación (Git Flow Ligero)
-* **`main`:** Rama estable protegida orientada a producción[cite: 1].
-* **`develop`:** Rama de integración continua[cite: 1].
-* **`feature/`:** Ramas independientes derivadas de `develop` para el desarrollo de historias de usuario[cite: 1].
-* **`hotfix/`:** Ramas para solución de errores urgentes derivadas de `main`[cite: 1].
-* **Tagging:** Uso de versionado semántico (SemVer) iniciando en `v0.1.0`[cite: 1].
+* **`main`:** Rama estable protegida orientada a producción.
+* **`develop`:** Rama de integración continua.
+* **`feature/`:** Ramas independientes derivadas de `develop` para el desarrollo de historias de usuario.
+* **`hotfix/`:** Ramas para solución de errores urgentes derivadas de `main`.
+* **Tagging:** Uso de versionado semántico (SemVer) iniciando en `v0.1.0`.
 
 ---
 
 ## 5. CI/CD (Integración y Despliegue Continuo)
-* **Disparadores (Triggers):** Ejecución automática en `push` hacia `develop` y en `pull_request` con destino a `main`[cite: 1].
-* **Criterios de Merge:** Aprobación de 1 revisor y ejecución con resultado PASSED en el pipeline de GitHub Actions[cite: 1].
+* **Disparadores (Triggers):** Ejecución automática en `push` hacia `develop` y en `pull_request` con destino a `main`.
+* **Criterios de Merge:** Aprobación de 1 revisor y ejecución con resultado PASSED en el pipeline de GitHub Actions.
 
 ---
 
 ## 6. Estrategia de Pruebas
-* **Pruebas Unitarias:** Validación de lógica de negocio (reglas de correo institucional y precios)[cite: 2].
-* **Pruebas de UI/Widget:** Validación de componentes visuales en Flutter[cite: 1, 2].
-* **Criterios de Entrada/Salida:** Entrada: Funcionalidad completa en rama feature. Salida: Cobertura ≥ 70% sin fallos en pipeline[cite: 1].
+* **Pruebas Unitarias:** Validación de lógica de negocio (reglas de correo institucional y precios).
+* **Pruebas de UI/Widget:** Validación de componentes visuales en Flutter.
+* **Criterios de Entrada/Salida:** Entrada: Funcionalidad completa en rama feature. Salida: Cobertura ≥ 70% sin fallos en pipeline.
 
 ---
 
 ## 7. Estrategia de Despliegue
-* **Alfa / Beta:** Pruebas internas distribuidas vía Firebase App Distribution para retroalimentación de la comunidad universitaria[cite: 1, 2].
-* **Producción:** Despliegue final en la Google Play Store mediante compilados AAB firmados[cite: 1].
+* **Alfa / Beta:** Pruebas internas distribuidas vía Firebase App Distribution para retroalimentación de la comunidad universitaria.
+* **Producción:** Despliegue final en la Google Play Store mediante compilados AAB firmados.
 
 ---
 
 ## 8. Monitoreo y Métricas
-* **Herramientas:** Firebase Crashlytics para rastreo de errores en vivo[cite: 1, 2].
-* **Métricas SLI/SLO:** SLO de disponibilidad del servicio en 99.5% y tasa libre de errores en 99%[cite: 1].
+* **Herramientas:** Firebase Crashlytics para rastreo de errores en vivo.
+* **Métricas SLI/SLO:** SLO de disponibilidad del servicio en 99.5% y tasa libre de errores en 99%.
 
 ---
 
 ## 9. Riesgos y Planes de Mitigación
-1. **Límite de conexiones simultáneas en backend free tier:** Optimización de consultas PostgreSQL y límites en WebSockets[cite: 2].
-2. **Rechazo de actualización en tiendas:** Pruebas preliminares con políticas de contenido e imágenes[cite: 1].
-3. **Fallo en compilación automatizada:** Entorno virtual fijo en GitHub Actions con Flutter canal estable[cite: 1].
+1. **Límite de conexiones simultáneas en backend free tier:** Optimización de consultas PostgreSQL y límites en WebSockets.
+2. **Rechazo de actualización en tiendas:** Pruebas preliminares con políticas de contenido e imágenes.
+3. **Fallo en compilación automatizada:** Entorno virtual fijo en GitHub Actions con Flutter canal estable.
 
 ---
 
 ## 10. Runbook de Fallas Comunes
-* **Build Roto en CI:** Verificar logs en la pestaña Actions, corregir error en la rama local `feature` y realizar commit de ajuste[cite: 1].
-* **Credenciales/Tokens Expirados:** Regenerar llaves API en el panel de Supabase y actualizar Variables de Entorno en GitHub Secrets[cite: 2].
+* **Build Roto en CI:** Verificar logs en la pestaña Actions, corregir error en la rama local `feature` y realizar commit de ajuste.
+* **Credenciales/Tokens Expirados:** Regenerar llaves API en el panel de Supabase y actualizar Variables de Entorno en GitHub Secrets.
