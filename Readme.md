@@ -11,8 +11,8 @@ UTrueque es una plataforma móvil orientada a la comunidad universitaria de la U
 
 ## 🔗 Enlaces Principales
 * **Tablero de Trabajo (Sprint 0):** [GitHub Projects Board](#) *(https://github.com/users/Angel050019/projects/1)*
-* **Plan DevOps del Proyecto Móvil:** [Ver /docs/Plan_DevOps.md](./docs/Plan_DevOps.md)[cite: 1]
-* **Matriz y Normas de Comunicación:** [Ver /docs/Comunicacion.md](./docs/Comunicacion.md)[cite: 1]
+* **Plan DevOps del Proyecto Móvil:** [Ver /docs/Plan_DevOps.md](./docs/Plan_DevOps.md)
+* **Matriz y Normas de Comunicación:** [Ver /docs/Comunicacion.md](./docs/Comunicacion.md)
 
 ---
 
