@@ -1,4 +1,4 @@
-# 📱 UTrueque - Marketplace Universitario Móvil
+# UTrueque - Marketplace Universitario Móvil
 
 ![UTrueque CI Pipeline](https://github.com/Angel050019/UTrueque-DevOps/actions/workflows/ci.yml/badge.svg)
 ![Version](https://img.shields.io/badge/version-v0.1.0-blue.svg)
