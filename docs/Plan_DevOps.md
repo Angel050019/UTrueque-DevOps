@@ -21,16 +21,16 @@ UTrueque es una aplicación móvil diseñada para facilitar la compra, venta, tr
 
 | Fase | Objetivo | Herramienta | Artefactos | Criterio de Hecho (DoD) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Plan** | Planificación de Sprints | GitHub Projects | Product Backlog | Historias con Criterios de Aceptación (Gherkin)[cite: 1, 2] |
+| **Plan** | Planificación de Sprints | GitHub Projects | Product Backlog | Historias con Criterios de Aceptación (Gherkin) |
 | **Code** | Desarrollo cliente y backend | VS Code, Flutter, Git | Commits, Pull Requests | PR aprobado por 1 reviewer |
 | **Build** | Compilación continua | GitHub Actions | Artefactos Android/iOS | Build sin errores sintácticos |
 | **Test** | Validación de calidad | Flutter Test | Reporte de Cobertura | Cobertura de código ≥ 70% |
 | **Package** | Generación de ejecutable | Fastlane, Gradle | APK / AAB | Artefacto firmado |
 | **Release** | Control de versiones | Git Tags, GitHub Releases | Release v0.x.y | Tag semántico publicado |
 | **Deploy** | Distribución a testers | Firebase App Distribution | APK para QA | Checklist de pruebas OK |
-| **Operate** | Operación de servicios BaaS | Supabase Dashboard | Logs de BD y API | Servicios operando sin latencia[cite: 2] |
-| **Monitor** | Análisis de caídas y errores | Firebase Crashlytics | Métricas de Crashes | Alertas automáticas activas[cite: 1, 2] |
-| **Feedback** | Gestión de incidencias | GitHub Issues | Registro de errores | Tickets agregados al Backlog[cite: 1] |
+| **Operate** | Operación de servicios BaaS | Supabase Dashboard | Logs de BD y API | Servicios operando sin latencia[ |
+| **Monitor** | Análisis de caídas y errores | Firebase Crashlytics | Métricas de Crashes | Alertas automáticas activas |
+| **Feedback** | Gestión de incidencias | GitHub Issues | Registro de errores | Tickets agregados al Backlog |
 
 ---
 
