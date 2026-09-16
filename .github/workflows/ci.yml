@@ -13,6 +13,13 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v4
 
+      - name: Verify Repository Structure
+        run: |
+          echo "Verificando estructura de carpetas..."
+          test -d docs || exit 1
+          test -d app || exit 1
+          echo "Estructura base verificada correctamente."
+
       - name: Setup Java JDK
         uses: actions/setup-java@v3
         with:
@@ -24,12 +31,12 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Install Dependencies
+      - name: Run Flutter Checks (If pubspec exists)
         run: |
           cd app
-          flutter pub get
-
-      - name: Static Code Analysis
-        run: |
-          cd app
-          flutter analyze
+          if [ -f "pubspec.yaml" ]; then
+            flutter pub get
+            flutter analyze
+          else
+            echo "Directorio app listo. Se omiten análisis hasta integrar el código de Flutter."
+          fi
