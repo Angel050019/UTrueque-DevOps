@@ -46,22 +46,33 @@ UTrueque es una plataforma móvil orientada a la comunidad universitaria de la U
 4. Ejecutar la aplicación en enumaldor o dispositivo físico:
     ```bash
     flutter run
+    
 ---
-##Política de Ramas y Versionamiento (Git Flow Ligero)
+
+## Política de Ramas y Versionamiento (Git Flow Ligero)
 * **main:** Rama protegida de producción estable.
 * **develop:** Rama principal para la integración continua de características.
 * **feature/:** Ramas independientes para el desarrollo de Historias de Usuario (Ejemplo: feature/HU-01-auth-institucional).
 * **hotfix/:** Correcciones urgentes aplicadas sobre producción.
+
 ---
-##Convención de Commits:
+
+## Convención de Commits:
 * (feat:, fix:, docs:, ci:, test:)
+
 ---
-##Tag Semántico:
+
+## Tag Semántico:
 * v0.1.0(Prototipo Inicial - Sprint 0)
+
+
 ---
-  ##Integrantes del Equipo
+
+  ## Integrantes del Equipo
   * **Diaz Huerta Oziel - Product Owner**
   * **Orduña Garrido Jose Luis - Scrum Master**
   * **Gonzalez Casarrubias Luis Angel - Develop Team**
   * **Cadena Vega Jonathan - Develop Team**
-  * **Torres Valeriano Jesus - Product Owner/Support** 
+  * **Torres Valeriano Jesus - Product Owner/Support**
+
+---
