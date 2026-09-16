@@ -9,7 +9,7 @@ UTrueque es una plataforma móvil orientada a la comunidad universitaria de la U
 
 ---
 
-## 🔗 Enlaces Principales
+## Enlaces Principales
 * **Tablero de Trabajo (Sprint 0):** [GitHub Projects Board](#) *(https://github.com/users/Angel050019/projects/1)*
 * **Plan DevOps del Proyecto Móvil:** [Ver /docs/Plan_DevOps.md](./docs/Plan_DevOps.md)
 * **Matriz y Normas de Comunicación:** [Ver /docs/Comunicacion.md](./docs/Comunicacion.md)
@@ -46,16 +46,19 @@ UTrueque es una plataforma móvil orientada a la comunidad universitaria de la U
 4. Ejecutar la aplicación en enumaldor o dispositivo físico:
     ```bash
     flutter run
+---
 ##Política de Ramas y Versionamiento (Git Flow Ligero)
 * **main:** Rama protegida de producción estable.
 * **develop:** Rama principal para la integración continua de características.
 * **feature/:** Ramas independientes para el desarrollo de Historias de Usuario (Ejemplo: feature/HU-01-auth-institucional).
 * **hotfix/:** Correcciones urgentes aplicadas sobre producción.
+---
 ##Convención de Commits:
 * (feat:, fix:, docs:, ci:, test:)
+---
 ##Tag Semántico:
 * v0.1.0(Prototipo Inicial - Sprint 0)
-
+---
   ##Integrantes del Equipo
   * **Diaz Huerta Oziel - Product Owner**
   * **Orduña Garrido Jose Luis - Scrum Master**
