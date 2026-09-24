@@ -1,10 +1,10 @@
-# Guía de Contribución y Versionado — UTrueque
+#Guía de Contribución y Versionado — UTrueque
 
-¡Bienvenido al proyecto **UTrueque**! Este documento establece las reglas de contribución, la convención de commits y el sistema de versionamiento de la aplicación móvil, con el objetivo de mantener un desarrollo organizado y facilitar la colaboración del equipo.
+¡Bienvenido al proyecto **UTrueque**! Este documento establece las reglas de contribución, convenciones de commits y versionamiento de la aplicación móvil, con el objetivo de mantener un desarrollo organizado y facilitar la colaboración del equipo.
 
 ## 1.Convención de Commits
 
-Se utilizará [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/) para mantener un historial de cambios claro y facilitar la generación de notas de lanzamiento.
+Se utilizará [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/) para mantener un historial claro y facilitar la generación de notas de lanzamiento (*Release Notes*).
 
 ### Formato
 
@@ -29,7 +29,7 @@ Se utilizará [Conventional Commits](https://www.conventionalcommits.org/es/v1.0
 
 ```text
 feat(auth): agregar inicio de sesión institucional
-fix(productos): corregir publicación de artículos
+fix(login): corregir validación de credenciales
 docs(readme): actualizar documentación
 ```
 
@@ -37,55 +37,74 @@ Los commits deberán ser claros, breves y representar cambios específicos.
 
 ## 2.Estrategia de Ramificación
 
-Se utilizará una estrategia de ramas para organizar el desarrollo y mantener estable el código.
+UTrueque utiliza una estrategia de ramas basada en Git Flow simplificado para organizar el desarrollo y mantener estable el código.
 
-| Rama       | Propósito                                 |
-| ---------- | ----------------------------------------- |
-| `main`     | Contiene versiones estables del proyecto. |
-| `develop`  | Integra cambios antes de su lanzamiento.  |
-| `feature/` | Desarrollo de nuevas funcionalidades.     |
-| `fix/`     | Corrección de errores.                    |
-| `release/` | Preparación de nuevas versiones.          |
-| `hotfix/`  | Correcciones urgentes en producción.      |
+| Rama       | Propósito                                     |
+| ---------- | --------------------------------------------- |
+| `main`     | Contiene las versiones estables del proyecto. |
+| `develop`  | Integra los cambios antes de su lanzamiento.  |
+| `feature/` | Desarrolla nuevas funcionalidades.            |
+| `hotfix/`  | Corrige errores urgentes.                     |
+| `release/` | Prepara y valida nuevas versiones.            |
 
-Las nuevas funcionalidades y correcciones deberán desarrollarse en ramas independientes y enviarse mediante Pull Requests hacia `develop`. Los lanzamientos aprobados se integrarán en `main`.
+Actualmente, el repositorio cuenta con las ramas `main`, `develop`, `feature/HU-01-auth-institucional` y `hotfix/0.1.1-fix-login`.
+
+Las ramas `feature/`, `hotfix/` y `release/` se crearán según las necesidades del proyecto.
+
+### Flujo de trabajo
+
+1. Crear una rama de trabajo desde `develop`.
+2. Realizar los cambios y registrarlos mediante commits convencionales.
+3. Enviar un Pull Request hacia `develop` para su revisión.
+4. Integrar los cambios aprobados.
+5. Preparar y validar las versiones antes de integrarlas en `main`.
+
+Las correcciones urgentes deberán integrarse también en `develop` para evitar que el error reaparezca en futuras versiones.
 
 ## 3.Versionamiento Semántico
 
-UTrueque utilizará el formato de versionamiento semántico `vX.Y.Z`, donde:
+Se utilizará el esquema de versionamiento semántico `vX.Y.Z`, que permite identificar los cambios realizados en cada versión.
 
-* **MAJOR (X):** Cambios incompatibles con versiones anteriores.
-* **MINOR (Y):** Nuevas funcionalidades compatibles.
-* **PATCH (Z):** Correcciones de errores y mejoras menores.
+| Componente  | Descripción                                     |
+| ----------- | ----------------------------------------------- |
+| `MAJOR (X)` | Cambios incompatibles con versiones anteriores. |
+| `MINOR (Y)` | Nuevas funcionalidades compatibles.             |
+| `PATCH (Z)` | Correcciones de errores y mejoras menores.      |
 
-Ejemplo: `v1.2.3`
+**Ejemplo:** `v1.2.3`
 
-Cada lanzamiento deberá identificarse mediante una etiqueta (*Git Tag*) que corresponda con la versión del código.
+Cada lanzamiento oficial deberá contar con una etiqueta (*Git Tag*) que identifique la versión del código fuente.
 
 ## 4.Control de Versiones de Compilación
 
 La versión semántica deberá mantenerse sincronizada con la configuración de compilación de la aplicación móvil.
 
-* `buildVersion` / `versionName`: versión visible de la aplicación.
+* `buildVersion` / `versionName`: identifica la versión visible de la aplicación.
 * `versionCode`: identificador numérico único y creciente para cada compilación Android.
 * `Git Tag`: identifica el commit correspondiente a una versión oficial.
 
-Antes de cada lanzamiento, estos valores deberán actualizarse y verificarse para garantizar la correcta identificación de la versión publicada.
+Antes de cada lanzamiento, se deberán actualizar y verificar estos valores para asegurar la correcta identificación de la versión publicada.
 
 ## 5.Política de Lanzamientos
 
-Para publicar una nueva versión se deberá:
+Para generar una nueva versión de UTrueque, se deberá:
 
-1. Crear una rama `release/vX.Y.Z` desde `develop`.
+1. Crear una rama `release/vX.Y.Z` desde `develop`, cuando sea necesario.
 2. Realizar pruebas y validar los cambios.
-3. Actualizar la versión y el número de compilación.
-4. Integrar los cambios en `main` y crear el Git Tag correspondiente.
-5. Documentar las modificaciones en las notas de lanzamiento (*Release Notes*).
+3. Actualizar la versión semántica y el número de compilación.
+4. Integrar los cambios aprobados en `main`.
+5. Crear el Git Tag correspondiente y documentar los cambios en las notas de lanzamiento (*Release Notes*).
 
-## 6.Contribución y Cumplimiento
+Las versiones oficiales deberán identificarse con etiquetas siguiendo el formato `vX.Y.Z`.
 
-Todos los integrantes deberán respetar las convenciones de commits, utilizar las ramas establecidas y solicitar revisión mediante Pull Requests antes de integrar cambios.
+## 6.Pull Requests y Contribución
 
-Este archivo `CONTRIBUTING.md` deberá mantenerse en la raíz del repositorio, dentro de la rama `main`, y actualizarse cuando se modifiquen las reglas de contribución o versionamiento.
+Todos los integrantes deberán seguir las convenciones de commits y utilizar las ramas establecidas.
 
-**Producto C:** Archivo `CONTRIBUTING.md` publicado en la rama principal (`main`), con la política de commits, ramificación y lanzamientos de UTrueque.
+Antes de integrar cambios, se deberá:
+
+* Crear un Pull Request con una descripción clara.
+* Verificar que los cambios funcionen correctamente.
+* Resolver conflictos y atender las observaciones de revisión.
+* Obtener aprobación antes de integrar cambios en `main`.
+
