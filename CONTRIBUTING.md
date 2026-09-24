@@ -1,4 +1,4 @@
-#Guía de Contribución y Versionado - UTrueque
+# Guía de Contribución y Versionado - UTrueque
 
 ¡Bienvenido al proyecto **UTrueque**! Este documento define la política oficial de mensajes de commits, la estrategia de ramificación y el esquema de versionamiento semántico para el desarrollo de la aplicación móvil.
 
