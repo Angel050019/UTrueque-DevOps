@@ -4,7 +4,7 @@
 
 ---
 
-##1. Convención de Commits (Conventional Commits)
+## 1. Convención de Commits (Conventional Commits)
 
 Todos los mensajes de commit deben seguir la especificación [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/) para mantener un historial limpio y facilitar la generación automatizada de notas de lanzamiento (*Release Notes*).
 
@@ -36,7 +36,7 @@ ci(workflow): actualiza la versión de Java a JDK 17 en el pipeline
 
 ---
 
-##2. Control de Versionado Semántico (SemVer)
+## 2. Control de Versionado Semántico (SemVer)
 
 UTrueque utiliza el versionamiento semántico (`vX.Y.Z`) vinculado con la configuración de Flutter definida en el archivo `pubspec.yaml`.
 
@@ -67,7 +67,7 @@ El número de compilación deberá incrementarse en cada nueva compilación dist
 
 ---
 
-##3. Flujo de Trabajo con Ramas (Git Flow Ligero)
+## 3. Flujo de Trabajo con Ramas (Git Flow Ligero)
 
 El proyecto utilizará las siguientes ramas para organizar el desarrollo:
 
@@ -79,7 +79,7 @@ El proyecto utilizará las siguientes ramas para organizar el desarrollo:
 
 ---
 
-##4. Proceso para Enviar un Pull Request (PR)
+## 4. Proceso para Enviar un Pull Request (PR)
 
 1. Crear una rama de trabajo desde `develop`, utilizando el prefijo correspondiente.
 
@@ -98,7 +98,7 @@ El proyecto utilizará las siguientes ramas para organizar el desarrollo:
 
 ---
 
-##5. Publicación del Archivo y Producto C
+## 5. Publicación del Archivo y Producto C
 
 Para completar el Producto C, se deberá guardar este documento como `CONTRIBUTING.md` en la raíz del repositorio y subirlo a la rama principal (`main`).
 
