@@ -1,110 +1,111 @@
-#Guía de Contribución y Versionado — UTrueque
+#Guía de Contribución y Versionado - UTrueque
 
-¡Bienvenido al proyecto **UTrueque**! Este documento establece las reglas de contribución, convenciones de commits y versionamiento de la aplicación móvil, con el objetivo de mantener un desarrollo organizado y facilitar la colaboración del equipo.
+¡Bienvenido al proyecto **UTrueque**! Este documento define la política oficial de mensajes de commits, la estrategia de ramificación y el esquema de versionamiento semántico para el desarrollo de la aplicación móvil.
 
-## 1.Convención de Commits
+---
 
-Se utilizará [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/) para mantener un historial claro y facilitar la generación de notas de lanzamiento (*Release Notes*).
+##1. Convención de Commits (Conventional Commits)
 
-### Formato
+Todos los mensajes de commit deben seguir la especificación [Conventional Commits](https://www.conventionalcommits.org/es/v1.0.0/) para mantener un historial limpio y facilitar la generación automatizada de notas de lanzamiento (*Release Notes*).
 
-```text
-<tipo>(<alcance opcional>): <descripción breve>
-```
-
-### Tipos de commits
-
-| Tipo       | Descripción                                       |
-| ---------- | ------------------------------------------------- |
-| `feat`     | Agrega una nueva funcionalidad.                   |
-| `fix`      | Corrige un error.                                 |
-| `docs`     | Modifica la documentación.                        |
-| `style`    | Realiza cambios de formato sin afectar la lógica. |
-| `refactor` | Mejora la estructura del código.                  |
-| `test`     | Agrega o modifica pruebas.                        |
-| `build`    | Modifica la configuración de compilación.         |
-| `chore`    | Realiza tareas de mantenimiento.                  |
-
-### Ejemplos
+### Formato del Commit
 
 ```text
-feat(auth): agregar inicio de sesión institucional
-fix(login): corregir validación de credenciales
-docs(readme): actualizar documentación
+<tipo>(<alcance opcional>): <descripción breve en presente o imperativo>
 ```
 
-Los commits deberán ser claros, breves y representar cambios específicos.
+### Tipos Permitidos (`<tipo>`)
 
-## 2.Estrategia de Ramificación
+* **`feat`**: Nueva funcionalidad para la aplicación móvil (ejemplo: inicio de sesión o catálogo).
+* **`fix`**: Corrección de errores o *bugs* en el código.
+* **`docs`**: Cambios en la documentación del proyecto (`README.md`, `Plan_DevOps.md`, etc.).
+* **`style`**: Ajustes de formato, espaciado o linters que no afectan la lógica del código.
+* **`refactor`**: Reestructuración del código sin corregir errores ni agregar funcionalidades.
+* **`test`**: Adición o corrección de pruebas unitarias o de integración en Flutter.
+* **`ci`**: Cambios en los flujos de integración continua (GitHub Actions, workflows).
+* **`chore`**: Tareas administrativas, actualización de dependencias o configuraciones sin impacto en producción.
 
-UTrueque utiliza una estrategia de ramas basada en Git Flow simplificado para organizar el desarrollo y mantener estable el código.
+### Ejemplos Válidos
 
-| Rama       | Propósito                                     |
-| ---------- | --------------------------------------------- |
-| `main`     | Contiene las versiones estables del proyecto. |
-| `develop`  | Integra los cambios antes de su lanzamiento.  |
-| `feature/` | Desarrolla nuevas funcionalidades.            |
-| `hotfix/`  | Corrige errores urgentes.                     |
-| `release/` | Prepara y valida nuevas versiones.            |
+```text
+feat(auth): agrega autenticación con correo institucional
+fix(ui): corrige desbordamiento de texto en la tarjeta de producto
+docs(contributing): añade guía de contribución y política de versionado
+ci(workflow): actualiza la versión de Java a JDK 17 en el pipeline
+```
 
-Actualmente, el repositorio cuenta con las ramas `main`, `develop`, `feature/HU-01-auth-institucional` y `hotfix/0.1.1-fix-login`.
+---
 
-Las ramas `feature/`, `hotfix/` y `release/` se crearán según las necesidades del proyecto.
+##2. Control de Versionado Semántico (SemVer)
 
-### Flujo de trabajo
+UTrueque utiliza el versionamiento semántico (`vX.Y.Z`) vinculado con la configuración de Flutter definida en el archivo `pubspec.yaml`.
 
-1. Crear una rama de trabajo desde `develop`.
-2. Realizar los cambios y registrarlos mediante commits convencionales.
-3. Enviar un Pull Request hacia `develop` para su revisión.
-4. Integrar los cambios aprobados.
-5. Preparar y validar las versiones antes de integrarlas en `main`.
+### Estructura de la Versión
 
-Las correcciones urgentes deberán integrarse también en `develop` para evitar que el error reaparezca en futuras versiones.
+El formato utilizado será `vX.Y.Z`, acompañado de un número de compilación en Flutter: `X.Y.Z+BUILD`.
 
-## 3.Versionamiento Semántico
+Ejemplo: `v0.1.0` (build `1`).
 
-Se utilizará el esquema de versionamiento semántico `vX.Y.Z`, que permite identificar los cambios realizados en cada versión.
+* **`X` (MAJOR / Mayor):** Cambios incompatibles en la API o rediseños arquitectónicos importantes.
+* **`Y` (MINOR / Menor):** Nuevas funcionalidades compatibles con versiones anteriores.
+* **`Z` (PATCH / Parche):** Correcciones de errores menores y parches de seguridad.
+* **`BUILD` (Build Number):** Número incremental utilizado para identificar cada compilación de la aplicación.
 
-| Componente  | Descripción                                     |
-| ----------- | ----------------------------------------------- |
-| `MAJOR (X)` | Cambios incompatibles con versiones anteriores. |
-| `MINOR (Y)` | Nuevas funcionalidades compatibles.             |
-| `PATCH (Z)` | Correcciones de errores y mejoras menores.      |
+### Sincronización con Flutter (`pubspec.yaml`)
 
-**Ejemplo:** `v1.2.3`
+Al liberar una versión estable en la rama `main`, la versión en `pubspec.yaml` deberá coincidir con la versión publicada.
 
-Cada lanzamiento oficial deberá contar con una etiqueta (*Git Tag*) que identifique la versión del código fuente.
+```yaml
+# pubspec.yaml
+version: 0.1.0+1
+```
 
-## 4.Control de Versiones de Compilación
+* `0.1.0`: Versión visible de la aplicación (`versionName`).
+* `1`: Número de compilación (`versionCode` / `buildVersion`).
 
-La versión semántica deberá mantenerse sincronizada con la configuración de compilación de la aplicación móvil.
+El número de compilación deberá incrementarse en cada nueva compilación distribuida.
 
-* `buildVersion` / `versionName`: identifica la versión visible de la aplicación.
-* `versionCode`: identificador numérico único y creciente para cada compilación Android.
-* `Git Tag`: identifica el commit correspondiente a una versión oficial.
+---
 
-Antes de cada lanzamiento, se deberán actualizar y verificar estos valores para asegurar la correcta identificación de la versión publicada.
+##3. Flujo de Trabajo con Ramas (Git Flow Ligero)
 
-## 5.Política de Lanzamientos
+El proyecto utilizará las siguientes ramas para organizar el desarrollo:
 
-Para generar una nueva versión de UTrueque, se deberá:
+1. **`main`**: Rama principal que contiene versiones estables. Solo recibe cambios mediante Pull Requests aprobados desde `develop` o `hotfix/*`.
+2. **`develop`**: Rama de integración donde se consolidan las funcionalidades desarrolladas y probadas.
+3. **`feature/<nombre-tarea>`**: Ramas creadas desde `develop` para desarrollar nuevas funcionalidades o Historias de Usuario.
+   Ejemplo: `feature/HU-01-auth-institucional`.
+4. **`hotfix/<nombre-fix>`**: Ramas creadas desde `main` para corregir errores críticos en versiones estables.
 
-1. Crear una rama `release/vX.Y.Z` desde `develop`, cuando sea necesario.
-2. Realizar pruebas y validar los cambios.
-3. Actualizar la versión semántica y el número de compilación.
-4. Integrar los cambios aprobados en `main`.
-5. Crear el Git Tag correspondiente y documentar los cambios en las notas de lanzamiento (*Release Notes*).
+---
 
-Las versiones oficiales deberán identificarse con etiquetas siguiendo el formato `vX.Y.Z`.
+##4. Proceso para Enviar un Pull Request (PR)
 
-## 6.Pull Requests y Contribución
+1. Crear una rama de trabajo desde `develop`, utilizando el prefijo correspondiente.
 
-Todos los integrantes deberán seguir las convenciones de commits y utilizar las ramas establecidas.
+2. Realizar commits atómicos siguiendo la convención establecida.
 
-Antes de integrar cambios, se deberá:
+3. Ejecutar las pruebas locales de Flutter antes de subir los cambios:
 
-* Crear un Pull Request con una descripción clara.
-* Verificar que los cambios funcionen correctamente.
-* Resolver conflictos y atender las observaciones de revisión.
-* Obtener aprobación antes de integrar cambios en `main`.
+   ```bash
+   flutter analyze
+   flutter test
+   ```
 
+4. Abrir un Pull Request y completar la plantilla obligatoria (`pull_request_template.md`).
+
+5. Solicitar al menos **una revisión de un compañero** antes de realizar el merge.
+
+---
+
+##5. Publicación del Archivo y Producto C
+
+Para completar el Producto C, se deberá guardar este documento como `CONTRIBUTING.md` en la raíz del repositorio y subirlo a la rama principal (`main`).
+
+El commit deberá seguir la convención establecida:
+
+```bash
+docs(contributing): añade reglas de contribución y versionado semántico
+```
+
+**Producto C:** Archivo `CONTRIBUTING.md` publicado en la rama `main`, con las políticas de commits, ramificación y versionamiento de UTrueque.
