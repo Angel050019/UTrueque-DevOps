@@ -1,0 +1,34 @@
+name: utrueque
+description: "UTrueque - Marketplace universitario móvil para la comunidad de la UTSJR."
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Backend as a Service
+  supabase_flutter: ^2.5.6
+
+  # Manejo de estado (Clean Architecture + Cubit)
+  flutter_bloc: ^8.1.5
+  equatable: ^2.0.5
+
+  # Verificación de conectividad (Escenario 3 de HU-01: alerta sin conexión)
+  connectivity_plus: ^6.0.3
+
+  # Utilidades
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
