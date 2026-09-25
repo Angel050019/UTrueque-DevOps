@@ -1,0 +1,42 @@
+name: UTrueque CI Pipeline
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Verify Repository Structure
+        run: |
+          echo "Verificando estructura de carpetas..."
+          test -d docs || exit 1
+          test -d app || exit 1
+          echo "Estructura base verificada correctamente."
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Run Flutter Checks (If pubspec exists)
+        run: |
+          cd app
+          if [ -f "pubspec.yaml" ]; then
+            flutter pub get
+            flutter analyze
+          else
+            echo "Directorio app listo. Se omiten análisis hasta integrar el código de Flutter."
+          fi

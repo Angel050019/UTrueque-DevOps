@@ -1,5 +1,6 @@
 # UTrueque - Aplicación Móvil (Flutter)
 
+
 Cliente móvil de UTrueque, construido en Flutter con Arquitectura Limpia (Clean Architecture) y Supabase como Backend as a Service.
 
 ## Estructura de carpetas
@@ -45,3 +46,4 @@ lib/
 ## Configuración de Supabase para HU-01
 
 En el panel de Supabase, la tabla `usuarios` debe existir con al menos las columnas `id` (uuid, FK a `auth.users.id`), `nombre_mostrar`, `division` y `carrera`, ya que `AuthRemoteDataSourceImpl` la consulta al iniciar sesión para completar el perfil.
+
