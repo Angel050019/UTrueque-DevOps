@@ -31,7 +31,7 @@ Se seleccionó únicamente HU-01 para este sprint porque es prerrequisito de tod
 | Configurar tablero del Sprint 1, dar seguimiento diario y remover impedimentos | Orduña Garrido Jose Luis | Scrum Master |
 | Crear proyecto en Supabase (Auth + tabla `usuarios`) y compartir credenciales vía GitHub Secrets | Orduña Garrido Jose Luis | Scrum Master |
 | Montar el esqueleto del proyecto Flutter (Clean Architecture, `pubspec.yaml`, dependencias) | Gonzalez Casarrubias Luis Angel | Develop Team |
-| Implementar pantalla de Registro + validación de dominio `@alumno.utsjr.edu.mx` | Gonzalez Casarrubias Luis Angel | Develop Team |
+| Implementar pantalla de Registro + validación de dominio `@utsjr.edu.mx` | Gonzalez Casarrubias Luis Angel | Develop Team |
 | Implementar pantalla de Inicio de Sesión + manejo de estado sin conexión | Cadena Vega Jonathan | Develop Team |
 | Implementar capa de datos (repositorio de autenticación contra Supabase) y pruebas unitarias del validador de correo | Cadena Vega Jonathan | Develop Team |
 | Validar manualmente cada escenario Gherkin contra el build antes de aprobar el PR | Torres Valeriano Jesus | Product Owner / Support |
@@ -47,7 +47,7 @@ Para garantizar que interactúo en un entorno seguro y exclusivo de la comunidad
 
   Escenario 1: Registro exitoso con correo institucional
     Dado que el estudiante no tiene una cuenta en UTrueque
-    Cuando ingresa un correo con dominio "@alumno.utsjr.edu.mx", una contraseña válida y su confirmación
+    Cuando ingresa un correo con dominio "@utsjr.edu.mx", una contraseña válida y su confirmación
     Y presiona el botón "Registrarse"
     Entonces el sistema crea la cuenta en Supabase
     Y el estudiante recibe un correo de confirmación
@@ -55,7 +55,7 @@ Para garantizar que interactúo en un entorno seguro y exclusivo de la comunidad
 
   Escenario 2: Registro rechazado por correo no institucional
     Dado que el estudiante está en la pantalla de Registro
-    Cuando ingresa un correo que no termina en "@alumno.utsjr.edu.mx"
+    Cuando ingresa un correo que no termina en "@utsjr.edu.mx"
     Y presiona el botón "Registrarse"
     Entonces el sistema no crea la cuenta
     Y se muestra el mensaje "Debes usar tu correo institucional para registrarte"

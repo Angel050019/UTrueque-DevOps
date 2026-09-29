@@ -6,21 +6,26 @@ void main() {
 
   group('EmailValidator.esInstitucional', () {
     test('acepta un correo con el dominio institucional', () {
-      expect(validador.esInstitucional('juan.perez@alumno.utsjr.edu.mx'), isTrue);
+      expect(validador.esInstitucional('juan.perez@utsjr.edu.mx'), isTrue);
     });
 
     test('acepta el dominio institucional sin importar mayúsculas', () {
-      expect(validador.esInstitucional('Juan.Perez@ALUMNO.UTSJR.EDU.MX'), isTrue);
+      expect(validador.esInstitucional('Juan.Perez@UTSJR.EDU.MX'), isTrue);
     });
 
     test('rechaza un correo con otro dominio', () {
       expect(validador.esInstitucional('juan.perez@gmail.com'), isFalse);
     });
+
+    test('rechaza dominios que solo se parecen al institucional', () {
+      expect(validador.esInstitucional('juan.perez@fakeutsjr.edu.mx'), isFalse);
+      expect(validador.esInstitucional('juan.perez@utsjr.edu.mx.com'), isFalse);
+    });
   });
 
   group('EmailValidator.validar', () {
     test('retorna null para un correo institucional válido', () {
-      expect(validador.validar('ana.lopez@alumno.utsjr.edu.mx'), isNull);
+      expect(validador.validar('ana.lopez@utsjr.edu.mx'), isNull);
     });
 
     test('retorna mensaje de campo vacío', () {

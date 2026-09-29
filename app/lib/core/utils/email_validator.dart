@@ -13,7 +13,7 @@ class EmailValidator {
   bool tieneFormatoValido(String correo) => _formatoCorreo.hasMatch(correo.trim());
 
   /// Devuelve `true` si [correo] termina exactamente en el dominio
-  /// institucional (`@alumno.utsjr.edu.mx`), sin importar mayúsculas.
+  /// institucional (`@utsjr.edu.mx`), sin importar mayúsculas.
   bool esInstitucional(String correo) {
     final String normalizado = correo.trim().toLowerCase();
     return normalizado.endsWith(AppConstants.dominioInstitucional.toLowerCase());

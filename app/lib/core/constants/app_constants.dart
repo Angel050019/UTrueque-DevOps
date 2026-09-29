@@ -4,7 +4,7 @@ class AppConstants {
 
   /// Dominio institucional obligatorio para registro e inicio de sesión.
   /// Ver HU-01: Registro e Inicio de Sesión Institucional.
-  static const String dominioInstitucional = '@alumno.utsjr.edu.mx';
+  static const String dominioInstitucional = '@utsjr.edu.mx';
 
   /// Nombre de la variable de entorno donde se inyecta la URL de Supabase
   /// (definida en GitHub Secrets / --dart-define, nunca hardcodeada).
