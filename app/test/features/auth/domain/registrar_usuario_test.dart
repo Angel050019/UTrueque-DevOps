@@ -11,7 +11,7 @@ void main() {
   late _MockAuthRepository repositorio;
   late RegistrarUsuario registrarUsuario;
 
-  const String correoValido = 'ana.lopez@alumno.utsjr.edu.mx';
+  const String correoValido = 'ana.lopez@utsjr.edu.mx';
   const String contrasenaValida = 'contrasena123';
 
   setUp(() {
