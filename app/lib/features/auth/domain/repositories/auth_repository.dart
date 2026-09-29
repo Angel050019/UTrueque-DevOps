@@ -22,4 +22,8 @@ abstract class AuthRepository {
 
   /// Usuario actualmente autenticado, o `null` si no hay sesión activa.
   Usuario? get usuarioActual;
+
+  /// HU-02: usuario de la sesión guardada con los datos de su perfil
+  /// (incluye `perfilCompleto`), o `null` si no hay sesión activa.
+  Future<Usuario?> obtenerSesionActual();
 }
