@@ -21,6 +21,9 @@ dependencies:
   # Verificación de conectividad (Escenario 3 de HU-01: alerta sin conexión)
   connectivity_plus: ^6.0.3
 
+  # HU-02: elegir foto de perfil desde la galería (Android, iOS y web)
+  image_picker: ^1.1.2
+
   # Utilidades
   cupertino_icons: ^1.0.8
 
@@ -29,6 +32,8 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^4.0.0
   mocktail: ^1.0.4
+  # HU-02: pruebas del PerfilCubit (blocTest)
+  bloc_test: ^9.1.7
 
 flutter:
   uses-material-design: true

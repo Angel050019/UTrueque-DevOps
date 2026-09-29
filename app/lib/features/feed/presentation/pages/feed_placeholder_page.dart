@@ -18,6 +18,12 @@ class FeedPlaceholderPage extends StatelessWidget {
         title: const Text('Feed principal'),
         actions: [
           IconButton(
+            key: const Key('feed_mi_perfil_boton'),
+            tooltip: 'Mi perfil',
+            icon: const Icon(Icons.person),
+            onPressed: () => Navigator.of(context).pushNamed(AppRoutes.miPerfil),
+          ),
+          IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
               await repositorio.cerrarSesion();
