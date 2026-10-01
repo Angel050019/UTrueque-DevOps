@@ -4,24 +4,31 @@ on:
   push:
     branches: [ develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 jobs:
   validate:
+    name: Análisis, pruebas y Quality Gate
     runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
+        with:
+          # SonarQube necesita el historial completo para detectar "código nuevo"
+          fetch-depth: 0
 
       - name: Verify Repository Structure
         run: |
           echo "Verificando estructura de carpetas..."
           test -d docs || exit 1
           test -d app || exit 1
+          test -f app/pubspec.yaml || exit 1
           echo "Estructura base verificada correctamente."
 
       - name: Setup Java JDK
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
@@ -30,13 +37,38 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          cache: true
 
-      - name: Run Flutter Checks (If pubspec exists)
-        run: |
-          cd app
-          if [ -f "pubspec.yaml" ]; then
-            flutter pub get
-            flutter analyze
-          else
-            echo "Directorio app listo. Se omiten análisis hasta integrar el código de Flutter."
-          fi
+      - name: Instalar dependencias
+        working-directory: app
+        run: flutter pub get
+
+      - name: Análisis estático (flutter analyze)
+        working-directory: app
+        run: flutter analyze
+
+      - name: Pruebas unitarias y del API REST (patrón AAA) con cobertura
+        working-directory: app
+        run: flutter test --coverage --reporter expanded
+
+      - name: Quality Gate local - cobertura >= 80% en dominio y datos
+        working-directory: app
+        run: bash ../.github/scripts/quality_gate_cobertura.sh coverage/lcov.info 80
+
+      - name: Publicar reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-lcov
+          path: app/coverage/lcov.info
+          if-no-files-found: ignore
+
+      - name: Análisis SonarQube Cloud + Quality Gate
+        if: ${{ env.SONAR_TOKEN != '' }}
+        uses: SonarSource/sonarqube-scan-action@v5
+        with:
+          projectBaseDir: app
+
+      - name: Aviso - SonarQube aún no configurado
+        if: ${{ env.SONAR_TOKEN == '' }}
+        run: echo "::warning::Falta el secreto SONAR_TOKEN. Se omitió el análisis de SonarQube Cloud (ver docs/Plan_de_Pruebas.md, sección 3.3)."
