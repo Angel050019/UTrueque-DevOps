@@ -1,497 +1,460 @@
-# PLAN DE PRUEBAS DE API REST Y ESTRATEGIA DE TESTING MÓVIL — UTRUEQUE
+# PLAN DE PRUEBAS DEL API REST Y ESTRATEGIA DE TESTING MÓVIL — UTRUEQUE
 
 **Asignatura:** Gestión del Proceso de Desarrollo de Software
-**Unidad II:** Desarrollo e Integración Continua (Tema 4)
+**Unidad II:** Desarrollo e Integración Continua (Tema I)
 **Institución:** Universidad Tecnológica de San Juan del Río (UTSJR)
-**Proyecto Integrador:** UTrueque (Plataforma Móvil de Trueque Universitario)
-**Fecha:** Septiembre de 2026
-**Versión:** 1.0
+**Proyecto Integrador:** UTrueque (Marketplace universitario móvil)
+**Fecha:** Octubre de 2026
+**Versión:** 2.0 (alineada con el código real de la app)
+
+> **Cambios respecto a la versión 1.0:** los casos de prueba estaban escritos en Java/JUnit para un backend que UTrueque no tiene. En esta versión se reescribieron en **Dart**, sobre el código real de la HU-01, y se ejecutan automáticamente en GitHub Actions junto con el Quality Gate.
 
 ---
 
-## SECCIÓN 1. PLAN DE PRUEBAS PARA EL API REST (BACKEND UTRUEQUE)
+## SECCIÓN 1. PLAN DE PRUEBAS PARA EL API REST
 
-### 1.1 Información General y Alcance
+### 1.1 Información general y alcance
 
-El propósito de este plan es definir la estrategia de automatización de pruebas y análisis estático para el backend (API REST) del proyecto UTrueque, asegurando el cumplimiento de los estándares de calidad definidos por ISO/IEC 25010 y métricas DORA.
+UTrueque no tiene un servidor propio. Su **API REST es la que expone Supabase**:
 
-**Nombre del Sistema:** UTrueque API REST Backend v1.0
+| Servicio de Supabase | Endpoints que usa la app | Para qué |
+| --- | --- | --- |
+| Auth (GoTrue) | `POST /auth/v1/signup`, `POST /auth/v1/token?grant_type=password`, `POST /auth/v1/logout` | Registro, inicio y cierre de sesión |
+| PostgREST | `GET/PATCH /rest/v1/usuarios`, `/rest/v1/divisiones`, `/rest/v1/carreras` | Perfil del alumno y catálogos |
+| Storage | `POST /storage/v1/object/...` | Fotos de perfil y de publicaciones |
 
-**Arquitectura:** Microservicios / Serverless REST API (Node.js/Java/Supabase)
+Por eso, "probar el API REST" significa comprobar que **la app envía las peticiones correctas y reacciona bien a cada respuesta** del servidor (200, 204, 400, 422, sin red).
 
-**Objetivo de Cobertura:** ≥ 80% por módulo funcional.
+**Sistema bajo prueba:** App UTrueque v0.1.0 (Flutter) + API REST de Supabase
+**Arquitectura de la app:** Clean Architecture (presentación → dominio → datos) con Cubit
+**Objetivo de cobertura:** ≥ 80 % en las capas de dominio y datos
 
-**Módulos en Alcance:**
+**Módulos en alcance:**
 
-* **AuthModule:** Autenticación con correo institucional (`@alumno.utsjr.edu.mx`) y JWT.
-* **CatalogModule:** Publicación, edición y catálogo de artículos universitarios.
-* **TradeModule:** Solicitud, negociación y aceptación/rechazo de trueques.
-* **UserModule:** Perfiles universitarios y reputación.
+| Módulo | Historia | Estado de pruebas |
+| --- | --- | --- |
+| Autenticación institucional (`@alumno.utsjr.edu.mx`) | HU-01 | **Automatizado (7 casos AAA)** |
+| Perfil (división y carrera) | HU-02 | Planeado — Sprint 2 |
+| Publicaciones y catálogo | HU-03 / HU-04 | Planeado — Sprints 3-4 |
+| Trueques y chat | HU-05+ | Planeado — Sprints 5-7 |
 
-### 1.2 Entornos de Prueba y Pipeline CI/CD
+### 1.2 Estrategia: cómo se prueba el API sin depender de internet
 
-#### Entorno: Local
+Las pruebas usan la **cadena real de la app** y solo cambian la red por un servidor simulado:
 
-**Infraestructura / Herramientas:** Docker Compose + JUnit 5 / Jest + SonarQube Local
+```
+Caso de uso → AuthRepositoryImpl → AuthRemoteDataSourceImpl → SupabaseClient → [ MockClient HTTP ]
+```
 
-**Propósito:** Pruebas unitarias inmediatas durante el desarrollo (Shift-Left Testing).
+El `MockClient` (paquete `http`) responde como lo haría Supabase y guarda cada petición recibida. Así se puede verificar el método, la ruta, los parámetros, el cuerpo y los encabezados (`apikey`, `Authorization: Bearer ...`) de cada llamada. Las pruebas son rápidas, repetibles y no tocan la base de datos real.
 
-#### Entorno: Staging (CI)
+### 1.3 Entornos de prueba
 
-**Infraestructura / Herramientas:** GitHub Actions Runner (Ubuntu)
+| Entorno | Herramientas | Propósito |
+| --- | --- | --- |
+| Local (cada desarrollador) | VS Code + `flutter test` | Ejecutar las pruebas antes de hacer push (Shift-Left) |
+| CI (cada push a `develop` y cada Pull Request) | GitHub Actions (Ubuntu) + SonarQube Cloud | Análisis estático, pruebas, cobertura y Quality Gate |
+| Staging (antes de cada release) | Proyecto de Supabase de pruebas + Postman / Newman | Pruebas manuales y de humo contra el API real |
 
-**Propósito:** Ejecución automática de pruebas unitarias, análisis estático y de integración en cada Pull Request.
+### 1.4 Matriz de tipos de prueba y criterios de éxito
 
-#### Entorno: Pre-Prod
+| Tipo de prueba | Herramienta | Alcance | Criterio de aceptación |
+| --- | --- | --- | --- |
+| Unitarias | `flutter_test` + `mocktail` | Casos de uso y validador de correo | 0 fallos |
+| API REST (contrato HTTP) | `flutter_test` + `http/testing` (MockClient) | `/auth/v1/*`, `/rest/v1/usuarios` | Peticiones y respuestas correctas (200, 204, 400, 422) |
+| Análisis estático | `flutter analyze` + SonarQube Cloud | Todo `app/lib` | 0 errores del analizador; Quality Gate **PASSED** |
+| Cobertura | `flutter test --coverage` | Capas de dominio y datos | ≥ 80 % |
+| Humo sobre API real | Postman / Newman | Proyecto Supabase de staging | Flujos de HU-01 sin errores |
+| Seguridad (planeado) | Políticas RLS de Supabase + OWASP Mobile Top 10 | Tablas con datos de usuarios | Un usuario no puede leer ni modificar datos de otro |
 
-**Infraestructura / Herramientas:** Supabase Staging DB + Newman / k6
+### 1.5 Criterios de entrada y salida
 
-**Propósito:** Pruebas de carga, estrés y seguridad antes de publicar la versión candidata.
+- **Entrada:** la historia tiene criterios de aceptación definidos y el código compila (`flutter analyze` sin errores).
+- **Salida:** todas las pruebas pasan, la cobertura de dominio y datos es ≥ 80 % y el Quality Gate de SonarQube está en **PASSED**. Sin esto, el Pull Request no se puede integrar.
 
-### 1.3 Matriz de Tipos de Prueba y Criterios de Éxito
+### 1.6 Riesgos
 
-| Tipo de Prueba    | Herramienta              | Alcance / Endpoint                  | Criterio de Aceptación                               |
-| ----------------- | ------------------------ | ----------------------------------- | ---------------------------------------------------- |
-| Unitarias         | JUnit 5 / Jest           | Servicios de negocio y validaciones | Cobertura ≥ 80%, 0 fallos.                           |
-| Análisis Estático | SonarQube Cloud          | Todo el código fuente del API       | Quality Gate aprobado (PASSED).                      |
-| Integración       | REST Assured / Supertest | `/auth`, `/products`, `/trades`     | Respuestas HTTP correctas (200, 201, 400, 401, 404). |
-| Rendimiento       | k6 / JMeter              | `POST /trades` y `GET /products`    | p95 < 200 ms, tasa de error < 1% con 200 RPS.        |
-| Seguridad         | OWASP ZAP                | Endpoints protegidos con JWT        | 0 vulnerabilidades de severidad Alta o Crítica.      |
-
-### 1.4 Configuración del Quality Gate en SonarQube
-
-El pipeline de CI/CD detendrá cualquier despliegue (Fail-Fast) si el análisis estático no satisface los siguientes umbrales obligatorios:
-
-**SonarQube Quality Gate Standards (UTSJR - UTrueque):**
-
-* **Bugs:** 0
-* **Vulnerabilities:** 0
-* **Security Hotspots Reviewed:** 100%
-* **Code Smells:** < 10
-* **Test Coverage:** ≥ 80.0%
-* **Duplicated Lines:** < 3.0%
+| Riesgo | Mitigación |
+| --- | --- |
+| Supabase cambia el formato de sus respuestas al actualizar la librería | Las pruebas del API detectan el cambio en CI antes de llegar a `main` |
+| Pruebas que dependen de internet o de datos reales | Se usa un servidor HTTP simulado; staging solo para pruebas de humo |
+| Baja cobertura en pantallas (UI) | Se cubrirán con pruebas de widgets e integración (Unidad III) |
 
 ---
 
-## SECCIÓN 2. CASOS DE PRUEBA UNITARIAS DEL API REST (PATRÓN AAA)
+## SECCIÓN 2. CASOS DE PRUEBA DEL API REST (PATRÓN AAA)
 
-A continuación se presentan 5 casos de prueba unitarios críticos desarrollados con el Patrón AAA (Arrange - Act - Assert) utilizando JUnit 5 y Mockito para el backend de UTrueque.
+Archivo: [`app/test/api/auth_api_rest_test.dart`](../app/test/api/auth_api_rest_test.dart)
+Ejecución local: `cd app && flutter test test/api/`
 
-### 2.1 CP-01. Autenticación Exitosa con Correo Institucional UTSJR
+Cada caso sigue el patrón **AAA**:
 
-**Código de prueba:**
+- **Arrange (Preparar):** se configura qué responderá el API simulado y se crea el caso de uso.
+- **Act (Actuar):** se ejecuta una sola acción (registrar, iniciar o cerrar sesión).
+- **Assert (Verificar):** se comprueba el resultado y las peticiones HTTP que envió la app.
 
-```java
-package com.utrueque.api.auth;
+### Resumen
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+| ID | Escenario (HU-01) | Endpoint | Respuesta simulada | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| CP-01 | Inicio de sesión exitoso | `POST /auth/v1/token` + `GET /rest/v1/usuarios` | 200 / 200 | Devuelve el alumno con su división y carrera |
+| CP-02 | Registro con correo no institucional | — | (ninguna) | `CorreoNoInstitucionalFailure`, 0 peticiones al API |
+| CP-03 | Registro exitoso | `POST /auth/v1/signup` | 200 | Cuenta creada, pendiente de confirmar correo |
+| CP-04 | Credenciales incorrectas | `POST /auth/v1/token` | 400 | `CredencialesInvalidasFailure` |
+| CP-05 | Sin conexión a internet | — | (ninguna) | `SinConexionFailure`, 0 peticiones al API |
+| CP-06 | Correo ya registrado | `POST /auth/v1/signup` | 422 | `ServidorFailure` con el mensaje del servidor |
+| CP-07 | Cierre de sesión | `POST /auth/v1/logout` | 204 | La sesión local queda vacía |
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
+### 2.1 CP-01. Inicio de sesión exitoso con correo institucional
 
-@ExtendWith(MockitoExtension.class)
-class AuthServiceTest {
+- **Arrange:** el API responde 200 con una sesión válida y la tabla `usuarios` devuelve el perfil del alumno. Hay conexión a internet.
+- **Act:** se llama a `IniciarSesion` con `ana.lopez@alumno.utsjr.edu.mx`.
+- **Assert:** el usuario devuelto tiene id, correo confirmado, nombre y carrera; la app hizo exactamente 2 peticiones (login y perfil), la del perfil filtra por `id=eq.<id>` y lleva el token `Bearer` de la sesión.
 
-    @Mock
-    private UserRepository userRepository;
+<details><summary>Ver código</summary>
 
-    @Mock
-    private JwtProvider jwtProvider;
+```dart
+test(
+    'CP-01: POST /auth/v1/token responde 200 y el inicio de sesión '
+    'devuelve el perfil del alumno desde /rest/v1/usuarios', () async {
+  // ARRANGE
+  api.cuando('POST', '/auth/v1/token', (_) => _respuestaJson(200, _sesionJson()));
+  api.cuando(
+    'GET',
+    '/rest/v1/usuarios',
+    (_) => _respuestaJson(200, <Map<String, dynamic>>[
+      <String, dynamic>{
+        'id': _idAlumno,
+        'nombre_mostrar': 'Ana López',
+        'division': 'Tecnologías de la Información',
+        'carrera': 'Ingeniería en Desarrollo y Gestión de Software',
+      },
+    ]),
+  );
+  final IniciarSesion iniciarSesion =
+      IniciarSesion(repositorio, _RedSimulada(conectado: true));
 
-    @InjectMocks
-    private AuthService authService;
+  // ACT
+  final Usuario usuario =
+      await iniciarSesion(correo: _correoAlumno, contrasena: _contrasena);
 
-    @Test
-    @DisplayName("CP-01: Debería autenticar correctamente a un alumno con correo institucional @alumno.utsjr.edu.mx")
-    void deberiaAutenticarAlumnoInstitucionalExitosamente() {
+  // ASSERT
+  expect(usuario.id, _idAlumno);
+  expect(usuario.correo, _correoAlumno);
+  expect(usuario.correoConfirmado, isTrue);
+  expect(usuario.nombreMostrar, 'Ana López');
+  expect(usuario.carrera, 'Ingeniería en Desarrollo y Gestión de Software');
 
-        // ARRANGE
-        String emailValido = "20233tn000@alumno.utsjr.edu.mx";
-        String password = "PasswordSegura123!";
-        User usuarioSimulado = new User("101", emailValido, "HASHED_PASS", "ALUMNO");
+  expect(api.peticiones, hasLength(2));
+  final http.Request login = api.peticiones[0];
+  expect(login.method, 'POST');
+  expect(login.url.path, '/auth/v1/token');
+  expect(login.url.queryParameters['grant_type'], 'password');
+  expect(login.headers['apikey'], _anonKey);
+  expect(jsonDecode(login.body), containsPair('email', _correoAlumno));
 
-        when(userRepository.findByEmail(emailValido)).thenReturn(java.util.Optional.of(usuarioSimulado));
-        when(userRepository.checkPassword(password, "HASHED_PASS")).thenReturn(true);
-        when(jwtProvider.generateToken(usuarioSimulado)).thenReturn("eyJhbGciOiJIUzI1NiJ9.mockToken");
+  final http.Request perfil = api.peticiones[1];
+  expect(perfil.method, 'GET');
+  expect(perfil.url.path, '/rest/v1/usuarios');
+  expect(perfil.url.queryParameters['id'], 'eq.$_idAlumno');
+  expect(perfil.headers['Authorization'], 'Bearer $_tokenAcceso');
 
-        // ACT
-        AuthResponse response = authService.login(new LoginRequest(emailValido, password));
-
-        // ASSERT
-        assertNotNull(response, "La respuesta de autenticación no debe ser nula");
-        assertEquals("eyJhbGciOiJIUzI1NiJ9.mockToken", response.getToken(), "El JWT generado debe coincidir");
-        assertEquals(emailValido, response.getEmail(), "El correo retornado debe ser el mismo registrado");
-        verify(userRepository, times(1)).findByEmail(emailValido);
-    }
-}
+  expect(repositorio.usuarioActual?.id, _idAlumno);
+});
 ```
+</details>
 
-### 2.2 CP-02. Rechazo de Registro con Dominio de Correo No Institucional
+### 2.2 CP-02. Registro rechazado por correo no institucional
 
-**Código de prueba:**
+- **Arrange:** se crea `RegistrarUsuario`; el API no tiene ninguna respuesta configurada.
+- **Act:** se intenta registrar `ana.lopez@gmail.com`.
+- **Assert:** se lanza `CorreoNoInstitucionalFailure` y **no se envió ninguna petición** al API (la validación ocurre antes de usar la red).
 
-```java
-package com.utrueque.api.auth;
+<details><summary>Ver código</summary>
 
-import com.utrueque.api.exceptions.InvalidDomainException;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.junit.jupiter.MockitoExtension;
+```dart
+test(
+    'CP-02: el registro con un correo no institucional se rechaza '
+    'sin enviar ninguna petición al API', () async {
+  // ARRANGE
+  final RegistrarUsuario registrarUsuario = RegistrarUsuario(repositorio);
 
-import static org.junit.jupiter.api.Assertions.*;
+  // ACT
+  final Future<Usuario> intento = registrarUsuario(
+    correo: 'ana.lopez@gmail.com',
+    contrasena: _contrasena,
+    confirmarContrasena: _contrasena,
+  );
 
-@ExtendWith(MockitoExtension.class)
-class RegisterServiceTest {
-
-    @InjectMocks
-    private AuthService authService;
-
-    @Test
-    @DisplayName("CP-02: Debería lanzar InvalidDomainException si el correo no pertenece al dominio UTSJR")
-    void deberiaRechazarRegistroConCorreoInvalido() {
-
-        // ARRANGE
-        RegisterRequest requestInvalido = new RegisterRequest(
-            "Juan Pérez",
-            "juan.perez@gmail.com",
-            "Password123!"
-        );
-
-        // ACT & ASSERT
-        InvalidDomainException exception = assertThrows(
-            InvalidDomainException.class,
-            () -> authService.register(requestInvalido),
-            "Debe lanzar la excepción al usar un correo externo"
-        );
-
-        assertTrue(
-            exception.getMessage().contains("Solo se permiten correos @alumno.utsjr.edu.mx o @utsjr.edu.mx"),
-            "El mensaje de error debe indicar la restricción de dominio"
-        );
-    }
-}
+  // ASSERT
+  await expectLater(intento, throwsA(isA<CorreoNoInstitucionalFailure>()));
+  expect(api.peticiones, isEmpty);
+});
 ```
+</details>
 
-### 2.3 CP-03. Creación de Publicación de Producto Válido para Trueque
+### 2.3 CP-03. Registro exitoso pendiente de confirmación
 
-**Código de prueba:**
+- **Arrange:** `POST /auth/v1/signup` responde 200 con el usuario creado y sin fecha de confirmación de correo.
+- **Act:** se registra el alumno con correo institucional y contraseñas iguales.
+- **Assert:** el usuario queda con `correoConfirmado = false`; el cuerpo de la petición lleva el correo y la contraseña; todavía no hay sesión activa.
 
-```java
-package com.utrueque.api.catalog;
+<details><summary>Ver código</summary>
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+```dart
+test(
+    'CP-03: POST /auth/v1/signup responde 200 y la cuenta queda '
+    'pendiente de confirmar el correo institucional', () async {
+  // ARRANGE
+  api.cuando(
+    'POST',
+    '/auth/v1/signup',
+    (_) => _respuestaJson(200, _usuarioAuthJson(correoConfirmado: false)),
+  );
+  final RegistrarUsuario registrarUsuario = RegistrarUsuario(repositorio);
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+  // ACT
+  final Usuario usuario = await registrarUsuario(
+    correo: _correoAlumno,
+    contrasena: _contrasena,
+    confirmarContrasena: _contrasena,
+  );
 
-@ExtendWith(MockitoExtension.class)
-class ProductServiceTest {
+  // ASSERT
+  expect(usuario.id, _idAlumno);
+  expect(usuario.correo, _correoAlumno);
+  expect(usuario.correoConfirmado, isFalse);
 
-    @Mock
-    private ProductRepository productRepository;
+  expect(api.peticiones, hasLength(1));
+  final http.Request registro = api.peticiones.single;
+  expect(registro.method, 'POST');
+  expect(registro.url.path, '/auth/v1/signup');
+  final Map<String, dynamic> cuerpo =
+      jsonDecode(registro.body) as Map<String, dynamic>;
+  expect(cuerpo['email'], _correoAlumno);
+  expect(cuerpo['password'], _contrasena);
 
-    @InjectMocks
-    private ProductService productService;
-
-    @Test
-    @DisplayName("CP-03: Debería crear una nueva publicación de producto con estado DISPONIBLE")
-    void deberiaCrearProductoParaTruequeExitosamente() {
-
-        // ARRANGE
-        ProductRequest request = new ProductRequest(
-            "Calculadora Casio fx-991EX",
-            "Calculadora científica en excelente estado",
-            "LIBROS_Y_MATERIALES",
-            "USER_123"
-        );
-
-        Product productoGuardado = new Product(
-            "PROD_999",
-            request.getTitle(),
-            request.getDescription(),
-            request.getCategory(),
-            "DISPONIBLE",
-            request.getUserId()
-        );
-
-        when(productRepository.save(any(Product.class))).thenReturn(productoGuardado);
-
-        // ACT
-        ProductResponse response = productService.createProduct(request);
-
-        // ASSERT
-        assertNotNull(response.getId(), "El ID del producto generado no debe ser nulo");
-        assertEquals("DISPONIBLE", response.getStatus(), "El estado inicial debe ser DISPONIBLE");
-        assertEquals("Calculadora Casio fx-991EX", response.getTitle());
-        verify(productRepository, times(1)).save(any(Product.class));
-    }
-}
+  expect(repositorio.usuarioActual, isNull);
+});
 ```
+</details>
 
-### 2.4 CP-04. Transición de Estado al Aceptar una Oferta de Trueque
+### 2.4 CP-04. Credenciales incorrectas (HTTP 400)
 
-**Código de prueba:**
+- **Arrange:** `POST /auth/v1/token` responde 400 con `invalid_credentials`.
+- **Act:** se intenta iniciar sesión con una contraseña incorrecta.
+- **Assert:** se lanza `CredencialesInvalidasFailure`, no se consulta el perfil y no queda sesión activa.
 
-```java
-package com.utrueque.api.trade;
+<details><summary>Ver código</summary>
 
-import com.utrueque.api.catalog.ProductRepository;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+```dart
+test(
+    'CP-04: POST /auth/v1/token responde 400 (credenciales inválidas) '
+    'y la app muestra CredencialesInvalidasFailure', () async {
+  // ARRANGE
+  api.cuando(
+    'POST',
+    '/auth/v1/token',
+    (_) => _respuestaJson(400, <String, dynamic>{
+      'code': 'invalid_credentials',
+      'error_code': 'invalid_credentials',
+      'msg': 'Invalid login credentials',
+    }),
+  );
+  final IniciarSesion iniciarSesion =
+      IniciarSesion(repositorio, _RedSimulada(conectado: true));
 
-import java.util.Optional;
+  // ACT
+  final Future<Usuario> intento =
+      iniciarSesion(correo: _correoAlumno, contrasena: 'ContrasenaIncorrecta');
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
-@ExtendWith(MockitoExtension.class)
-class TradeServiceTest {
-
-    @Mock
-    private TradeRepository tradeRepository;
-
-    @Mock
-    private ProductRepository productRepository;
-
-    @InjectMocks
-    private TradeService tradeService;
-
-    @Test
-    @DisplayName("CP-04: Debería cambiar el estado de la oferta a ACEPTADO y actualizar productos a EN_PROCESO")
-    void deberiaAceptarOfertaDeTruequeCorrectamente() {
-
-        // ARRANGE
-        String tradeId = "TRADE_500";
-        Trade tradePendiente = new Trade(tradeId, "PROD_A", "PROD_B", "PENDIENTE");
-
-        when(tradeRepository.findById(tradeId)).thenReturn(Optional.of(tradePendiente));
-
-        // ACT
-        TradeResult result = tradeService.acceptTradeOffer(tradeId);
-
-        // ASSERT
-        assertEquals("ACEPTADO", result.getTradeStatus(), "El estado de la negociación debe ser ACEPTADO");
-        verify(tradeRepository).updateStatus(tradeId, "ACEPTADO");
-        verify(productRepository).updateStatus("PROD_A", "EN_PROCESO");
-        verify(productRepository).updateStatus("PROD_B", "EN_PROCESO");
-    }
-}
+  // ASSERT
+  await expectLater(intento, throwsA(isA<CredencialesInvalidasFailure>()));
+  expect(api.peticiones, hasLength(1));
+  expect(api.peticiones.single.url.path, '/auth/v1/token');
+  expect(repositorio.usuarioActual, isNull);
+});
 ```
+</details>
 
-### 2.5 CP-05. Manejo de Excepción para Producto No Encontrado en el Catálogo
+### 2.5 CP-05. Inicio de sesión sin conexión a internet
 
-**Código de prueba:**
+- **Arrange:** la conectividad simulada indica que no hay red.
+- **Act:** se intenta iniciar sesión.
+- **Assert:** se lanza `SinConexionFailure` y no se envió ninguna petición.
 
-```java
-package com.utrueque.api.catalog;
+<details><summary>Ver código</summary>
 
-import com.utrueque.api.exceptions.ResourceNotFoundException;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+```dart
+test(
+    'CP-05: sin conexión a internet el inicio de sesión falla con '
+    'SinConexionFailure y no se llama al API', () async {
+  // ARRANGE
+  final IniciarSesion iniciarSesion =
+      IniciarSesion(repositorio, _RedSimulada(conectado: false));
 
-import java.util.Optional;
+  // ACT
+  final Future<Usuario> intento =
+      iniciarSesion(correo: _correoAlumno, contrasena: _contrasena);
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
-
-@ExtendWith(MockitoExtension.class)
-class ProductSearchServiceTest {
-
-    @Mock
-    private ProductRepository productRepository;
-
-    @InjectMocks
-    private ProductService productService;
-
-    @Test
-    @DisplayName("CP-05: Debería lanzar ResourceNotFoundException si el ID del producto no existe")
-    void deberiaLanzarExcepcionCuandoProductoNoExiste() {
-
-        // ARRANGE
-        String idInexistente = "PROD_NO_EXISTE_999";
-        when(productRepository.findById(idInexistente)).thenReturn(Optional.empty());
-
-        // ACT & ASSERT
-        ResourceNotFoundException exception = assertThrows(
-            ResourceNotFoundException.class,
-            () -> productService.getProductById(idInexistente),
-            "Debe arrojar una excepción 404 personalizada"
-        );
-
-        assertEquals(
-            "Producto con ID PROD_NO_EXISTE_999 no fue encontrado",
-            exception.getMessage()
-        );
-
-        verify(productRepository, times(1)).findById(idInexistente);
-    }
-}
+  // ASSERT
+  await expectLater(intento, throwsA(isA<SinConexionFailure>()));
+  expect(api.peticiones, isEmpty);
+});
 ```
+</details>
+
+### 2.6 CP-06. Correo ya registrado (HTTP 422)
+
+- **Arrange:** `POST /auth/v1/signup` responde 422 con `user_already_exists`.
+- **Act:** se intenta registrar un correo que ya existe.
+- **Assert:** se lanza `ServidorFailure` con el mensaje que envió el servidor.
+
+<details><summary>Ver código</summary>
+
+```dart
+test(
+    'CP-06: POST /auth/v1/signup responde 422 (correo ya registrado) '
+    'y el mensaje del servidor llega a la app', () async {
+  // ARRANGE
+  api.cuando(
+    'POST',
+    '/auth/v1/signup',
+    (_) => _respuestaJson(422, <String, dynamic>{
+      'code': 'user_already_exists',
+      'error_code': 'user_already_exists',
+      'msg': 'User already registered',
+    }),
+  );
+  final RegistrarUsuario registrarUsuario = RegistrarUsuario(repositorio);
+
+  // ACT
+  final Future<Usuario> intento = registrarUsuario(
+    correo: _correoAlumno,
+    contrasena: _contrasena,
+    confirmarContrasena: _contrasena,
+  );
+
+  // ASSERT
+  await expectLater(
+    intento,
+    throwsA(
+      isA<ServidorFailure>()
+          .having((ServidorFailure f) => f.mensaje, 'mensaje', 'User already registered'),
+    ),
+  );
+  expect(api.peticiones, hasLength(1));
+});
+```
+</details>
+
+### 2.7 CP-07. Cierre de sesión (HTTP 204)
+
+- **Arrange:** el alumno inicia sesión y `POST /auth/v1/logout` responde 204.
+- **Act:** se llama a `cerrarSesion()`.
+- **Assert:** ya no hay usuario actual y la petición de logout llevó el token de la sesión.
+
+<details><summary>Ver código</summary>
+
+```dart
+test(
+    'CP-07: POST /auth/v1/logout responde 204 y la sesión local '
+    'queda cerrada', () async {
+  // ARRANGE
+  api.cuando('POST', '/auth/v1/token', (_) => _respuestaJson(200, _sesionJson()));
+  api.cuando(
+    'GET',
+    '/rest/v1/usuarios',
+    (_) => _respuestaJson(200, <Map<String, dynamic>>[]),
+  );
+  api.cuando('POST', '/auth/v1/logout', (_) => http.Response('', 204));
+  await repositorio.iniciarSesion(correo: _correoAlumno, contrasena: _contrasena);
+  expect(repositorio.usuarioActual, isNotNull);
+
+  // ACT
+  await repositorio.cerrarSesion();
+
+  // ASSERT
+  expect(repositorio.usuarioActual, isNull);
+  final http.Request logout = api.peticiones.last;
+  expect(logout.method, 'POST');
+  expect(logout.url.path, '/auth/v1/logout');
+  expect(logout.headers['Authorization'], 'Bearer $_tokenAcceso');
+});
+```
+</details>
+
+### 2.8 Pruebas unitarias que ya existían (Sprint 1)
+
+| Archivo | Qué valida |
+| --- | --- |
+| `test/core/utils/email_validator_test.dart` | Dominio institucional, formato y mensajes de error (7 pruebas) |
+| `test/features/auth/domain/registrar_usuario_test.dart` | Reglas del registro: dominio, contraseñas (4 pruebas) |
+| `test/features/auth/domain/iniciar_sesion_test.dart` | Escenarios 3, 4 y 5 de HU-01 con `mocktail` (3 pruebas) |
 
 ---
 
-## SECCIÓN 3. INVESTIGACIÓN: PRUEBAS Y HERRAMIENTAS PARA APLICACIONES MÓVILES (FLUTTER / MOBILE)
+## SECCIÓN 3. QUALITY GATE EN SONARQUBE
 
-### 3.1 Niveles de Prueba en el Desarrollo Móvil
+### 3.1 Dónde se aplica
 
-A diferencia de las aplicaciones web o backend, las aplicaciones móviles dependen del hardware nativo, resoluciones de pantalla variables, versiones del sistema operativo (Android/iOS), estados de red y ciclo de vida de la aplicación.
+El Quality Gate se ejecuta en GitHub Actions ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) en cada push a `develop` y en cada Pull Request hacia `develop` o `main`:
 
-**Niveles de prueba:**
+1. `flutter analyze`: análisis estático del analizador de Dart.
+2. `flutter test --coverage`: pruebas unitarias y del API REST, con reporte `lcov.info`.
+3. **Gate de cobertura propio:** [`.github/scripts/quality_gate_cobertura.sh`](../.github/scripts/quality_gate_cobertura.sh) falla si la cobertura de dominio y datos es menor al 80 %.
+4. **SonarQube Cloud:** analiza `app/lib`, importa la cobertura y espera el resultado del Quality Gate (`sonar.qualitygate.wait=true`). Si el resultado es **FAILED**, el pipeline se detiene (Fail-Fast) y el PR no se puede integrar.
 
-#### Nivel 1: Pruebas Unitarias
+La configuración está en [`app/sonar-project.properties`](../app/sonar-project.properties).
 
-**Business Logic / BLoC / State Management**
+### 3.2 Condiciones del Quality Gate
 
-#### Nivel 2: Pruebas de Widgets y Renderizado
+SonarQube Cloud analiza Dart/Flutter de forma nativa. En el plan gratuito se usa el gate **"Sonar way"**, que evalúa el **código nuevo** de cada Pull Request:
 
-**Widget Tests / Golden Tests**
+| Condición (código nuevo) | Umbral |
+| --- | --- |
+| Bugs nuevos | 0 (calificación de confiabilidad A) |
+| Vulnerabilidades nuevas | 0 (calificación de seguridad A) |
+| Deuda técnica | Calificación de mantenibilidad A |
+| Security Hotspots revisados | 100 % |
+| Cobertura de pruebas | ≥ 80 % |
+| Líneas duplicadas | ≤ 3 % |
 
-#### Nivel 3: Pruebas de Integración Móvil
+Como el plan gratuito no permite crear gates personalizados, el equipo agrega su propio **gate de cobertura en CI** (paso 3), que exige ≥ 80 % sobre todo el código de dominio y datos, no solo sobre el código nuevo.
 
-**Integration Test Driver**
+**Exclusiones de cobertura:** `main.dart`, pantallas (`presentation/pages`), widgets visuales y rutas. Esas partes se validan con pruebas de widgets e integración, no con pruebas unitarias.
 
-#### Nivel 4: Pruebas E2E y Dispositivos Reales
+### 3.3 Activación (una sola vez, la hace el dueño del repo)
 
-**Patrol / Firebase Test Lab**
+1. Entrar a [sonarcloud.io](https://sonarcloud.io) con GitHub e importar la organización `angel050019` y el repositorio `UTrueque-DevOps`.
+2. En el proyecto: *Administration → Analysis Method* → desactivar **Automatic Analysis** (el análisis lo hace GitHub Actions).
+3. Generar un token en *My Account → Security* y guardarlo en GitHub como secreto `SONAR_TOKEN` (*Settings → Secrets and variables → Actions*).
+4. Verificar que `sonar.organization` y `sonar.projectKey` en `app/sonar-project.properties` coincidan con lo que muestra SonarQube Cloud.
+5. (Opcional) En GitHub, *Settings → Branches*: marcar el check **"Análisis, pruebas y Quality Gate"** como obligatorio para `develop` y `main`.
 
-### Pruebas Unitarias Móviles
-
-Validan clases, controladores de estado (BLoC, Provider, Riverpod), repositorios y parseo de JSON sin renderizar la interfaz gráfica.
-
-### Pruebas de Widgets
-
-Validan la interacción de la UI aislada en un lienzo simulado. Comprueban que los botones respondan, que los campos de texto muestren mensajes de error y la disposición gráfica.
-
-### Golden Tests
-
-Comparación píxel por píxel de capturas de pantalla de widgets contra una imagen dorada (golden file) de referencia para evitar regresiones visuales.
-
-### Pruebas de Integración Móvil
-
-Verifican el flujo completo de la app conectada con servicios reales o simulados (red, almacenamiento local SQLite/Hive, notificaciones push FCM) ejecutándose dentro de un emulador o dispositivo real.
-
-### Pruebas E2E en Granjas de Dispositivos
-
-Pruebas automatizadas en docenas de dispositivos físicos reales con diferentes marcas (Samsung, Xiaomi, iPhone), tamaños de pantalla y versiones de Android/iOS para validar compatibilidad.
-
-### Pruebas de Rendimiento y Recursos Móviles
-
-#### FPS (Frames Per Second)
-
-Garantizar 60 FPS (o 120 FPS en pantallas de alta tasa de refresco) para evitar parpadeos (jank).
-
-#### Consumo de Memoria RAM y CPU
-
-Detección de fugas de memoria (memory leaks).
-
-#### Batería y Uso de Red
-
-Medición del consumo energético y comportamiento en redes inestables (3G, 4G, 5G o modo offline).
-
-### 3.2 Matriz Comparativa de Herramientas para Testing Móvil
-
-| Herramienta           | Tipo / Propósito              | Plataforma            | Integración CI/CD            | Ventajas Principales                                                                                    |
-| --------------------- | ----------------------------- | --------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------- |
-| **flutter_test**      | Unitarias y Widgets           | Flutter (Dart)        | Excelente (Nativo)           | Ejecución ultra rápida en memoria, nativo de Flutter.                                                   |
-| **Patrol**            | E2E e Integración Avanzada    | Flutter (Android/iOS) | GitHub Actions, Codemagic    | Permite interactuar con diálogos nativos del sistema operativo, como permisos, cámara y notificaciones. |
-| **Appium**            | E2E Automático                | Híbrido / Nativo      | Jenkins, GitHub Actions      | Multiplataforma, estándar de la industria basado en WebDriver.                                          |
-| **Firebase Test Lab** | Granja de Dispositivos        | Android / iOS         | Google Cloud, GitHub Actions | Ejecuta pruebas en dispositivos físicos reales alojados en Google Cloud.                                |
-| **Detox**             | E2E React Native / Móvil      | iOS / Android         | Bitrise, GitHub Actions      | Ejecución rápida, sincronización automática con la UI.                                                  |
-| **SonarQube**         | Análisis Estático (Dart/Java) | Multiplataforma       | GitHub Actions, GitLab CI    | Análisis de calidad, vulnerabilidades y deuda técnica en el código móvil.                               |
-
-### 3.3 Integración de Pruebas Móviles en el Pipeline CI/CD de UTrueque
-
-El siguiente workflow representa la ejecución automatizada de pruebas para la aplicación móvil de UTrueque en GitHub Actions.
-
-#### Configuración del Workflow
-
-```yaml
-name: Mobile & API Quality Pipeline - UTrueque
-
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  mobile-tests:
-    name: Flutter Unit, Widget & Static Analysis
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout del Código
-        uses: actions/checkout@v4
-
-      - name: Configurar Java JDK 17
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'zulu'
-          java-version: '17'
-
-      - name: Configurar SDK de Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          flutter-version: '3.29.2'
-          cache: true
-
-      - name: Instalar Dependencias
-        run: |
-          cd app
-          flutter pub get
-
-      - name: Verificación de Formato y Linter
-        run: |
-          cd app
-          flutter analyze
-
-      - name: Ejecutar Pruebas Unitarias y de Widgets con Cobertura
-        run: |
-          cd app
-          flutter test --coverage
-
-      - name: Escaneo de SonarQube Cloud (Quality Gate)
-        uses: SonarSource/sonarcloud-github-action@v2.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-```
+Mientras no exista el secreto, el pipeline corre las pruebas y el gate de cobertura, y muestra un aviso de que se omitió SonarQube.
 
 ---
 
-## CONCLUSIONES Y RECOMENDACIONES DEVOPS
+## SECCIÓN 4. PRUEBAS Y HERRAMIENTAS PARA APLICACIONES MÓVILES
 
-### Estrategia Shift-Left
+La investigación completa está en el documento *Investigación Técnica: Tipos de Pruebas y Herramientas para el Desarrollo Móvil*. Este es el resumen de cómo se aplica a UTrueque:
 
-Al ejecutar los 5 casos de prueba del API REST y los análisis estáticos desde la fase de Pull Request, se reduce el costo de corrección de errores en hasta un 80% en comparación con la detección en etapa de producción.
+| Nivel | Qué se prueba en UTrueque | Herramienta | Estado |
+| --- | --- | --- | --- |
+| Unitarias | Validador de correo, casos de uso de HU-01 | `flutter_test`, `mocktail` | ✅ En CI |
+| API REST | Contrato HTTP con Supabase Auth y PostgREST | `flutter_test`, `http/testing` | ✅ En CI |
+| Widgets / Golden | Formularios de registro y login, tarjetas de productos | `flutter_test` (`testWidgets`, `matchesGoldenFile`) | Unidad III |
+| Integración | Flujo registro → login → feed en emulador | `integration_test`, Patrol | Unidad III |
+| E2E en dispositivos reales | Distintas marcas y versiones de Android | Firebase Test Lab | Antes del release |
+| Análisis estático | Calidad, bugs, vulnerabilidades, duplicación | `flutter analyze`, SonarQube Cloud | ✅ En CI |
+| Rendimiento | FPS (jank), memoria | Flutter DevTools | Por sprint, manual |
+| Seguridad | Políticas RLS, almacenamiento seguro de tokens | Supabase RLS, OWASP Mobile Top 10 | Sprint 2 en adelante |
 
-### Quality Gate como Guardián
+---
 
-La regla de bloquear el despliegue cuando la cobertura cae por debajo del 80% o existen vulnerabilidades detectadas por SonarQube garantiza un producto robusto para la comunidad universitaria de la UTSJR.
+## CONCLUSIONES
 
-### Automatización Móvil
-
-La inclusión de Widget Tests y herramientas como Patrol o Firebase Test Lab resuelve el reto de la heterogeneidad de dispositivos móviles, asegurando que UTrueque funcione correctamente en cualquier smartphone.
+- **Pruebas sobre el código real:** los casos AAA ya no son ejemplos teóricos; prueban el registro y el inicio de sesión que usa la app y se ejecutan solos en cada Pull Request.
+- **El Quality Gate protege `main`:** si una prueba falla, la cobertura baja del 80 % o SonarQube detecta bugs o vulnerabilidades nuevas, el cambio no se integra.
+- **Siguiente paso:** al terminar HU-02 (perfil con división y carrera) se agregarán sus casos de API para `PATCH /rest/v1/usuarios` y las pruebas de RLS.
