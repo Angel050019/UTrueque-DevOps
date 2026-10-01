@@ -47,10 +47,17 @@ class _ApiSupabaseSimulada {
     peticiones.add(peticion);
     final http.Response Function(http.Request)? responder =
         _rutas['${peticion.method} ${peticion.url.path}'];
-    if (responder == null) {
-      return _respuestaJson(404, <String, dynamic>{'msg': 'Ruta no simulada'});
-    }
-    return responder(peticion);
+    final http.Response respuesta = responder == null
+        ? _respuestaJson(404, <String, dynamic>{'msg': 'Ruta no simulada'})
+        : responder(peticion);
+    // Supabase (postgrest) lee `response.request`, así que la respuesta
+    // simulada debe ir ligada a la petición que la originó.
+    return http.Response.bytes(
+      respuesta.bodyBytes,
+      respuesta.statusCode,
+      headers: respuesta.headers,
+      request: peticion,
+    );
   });
 
   /// Registra la respuesta que dará el servidor para `metodo` + `ruta`.
