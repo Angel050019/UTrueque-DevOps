@@ -12,6 +12,7 @@ class UsuarioModel extends Usuario {
     super.division,
     super.carrera,
     super.correoConfirmado,
+    super.perfilCompleto,
   });
 
   factory UsuarioModel.fromSupabaseUser(User usuarioSupabase, {Map<String, dynamic>? perfil}) {
@@ -22,6 +23,7 @@ class UsuarioModel extends Usuario {
       nombreMostrar: perfil?['nombre_mostrar'] as String?,
       division: perfil?['division'] as String?,
       carrera: perfil?['carrera'] as String?,
+      perfilCompleto: perfil?['perfil_completo'] as bool? ?? false,
     );
   }
 }

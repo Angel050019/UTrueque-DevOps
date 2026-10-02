@@ -4,8 +4,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../domain/usecases/resolver_destino_inicial.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
+import '../navegacion_inicial.dart';
 
 /// Pantalla 4 - Inicio de sesión (Login).
 /// Componentes: campo de correo, campo de contraseña, botón "Iniciar
@@ -43,7 +45,10 @@ class _LoginPageState extends State<LoginPage> {
       body: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is AuthLoginExitoso) {
-            Navigator.of(context).pushReplacementNamed(AppRoutes.feedPrincipal);
+            // HU-02: perfil incompleto → "Completar perfil"; completo → Feed.
+            Navigator.of(context).pushReplacementNamed(
+              rutaParaDestino(DestinoInicial.desde(state.usuario)),
+            );
           }
           if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(

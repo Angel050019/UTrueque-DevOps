@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/routes/app_routes.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../domain/usecases/resolver_destino_inicial.dart';
+import '../navegacion_inicial.dart';
 
 /// Pantalla 1 - Splash (carga inicial).
 /// Verifica en segundo plano si hay una sesión activa guardada y
@@ -25,12 +26,13 @@ class _SplashPageState extends State<SplashPage> {
     await Future<void>.delayed(const Duration(milliseconds: 400));
     if (!mounted) return;
 
-    final AuthRepository repositorio = context.read<AuthRepository>();
-    final bool haySesionActiva = repositorio.usuarioActual != null;
+    // HU-02: sin sesión → Login; perfil incompleto → Completar perfil;
+    // perfil completo → Feed. La regla vive en ResolverDestinoInicial.
+    final DestinoInicial destino =
+        await ResolverDestinoInicial(context.read<AuthRepository>())();
+    if (!mounted) return;
 
-    Navigator.of(context).pushReplacementNamed(
-      haySesionActiva ? AppRoutes.feedPrincipal : AppRoutes.login,
-    );
+    Navigator.of(context).pushReplacementNamed(rutaParaDestino(destino));
   }
 
   @override

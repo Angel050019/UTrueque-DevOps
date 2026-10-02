@@ -25,4 +25,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Usuario? get usuarioActual => _remoteDataSource.usuarioActual;
+
+  @override
+  Future<Usuario?> obtenerSesionActual() => _remoteDataSource.obtenerSesionActual();
 }
