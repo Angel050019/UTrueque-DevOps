@@ -21,6 +21,9 @@ dependencies:
   # Verificación de conectividad (Escenario 3 de HU-01: alerta sin conexión)
   connectivity_plus: ^6.0.3
 
+  # Splash animado (diseño de Luis Angel)
+  google_fonts: ^6.2.1   # ⚠️ usa la misma versión que trae tu archivo
+
   # HU-02: elegir foto de perfil desde la galería (Android, iOS y web)
   image_picker: ^1.1.2
 
@@ -37,3 +40,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  # ⚠️ copia aquí las líneas de assets que trae tu archivo, por ejemplo:
+  assets:
+    - assets/images/
