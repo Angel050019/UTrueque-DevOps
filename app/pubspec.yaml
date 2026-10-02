@@ -37,10 +37,7 @@ dev_dependencies:
   mocktail: ^1.0.4
   # HU-02: pruebas del PerfilCubit (blocTest)
   bloc_test: ^9.1.7
+  http: ^1.6.0
 
 flutter:
   uses-material-design: true
-
-  # ⚠️ copia aquí las líneas de assets que trae tu archivo, por ejemplo:
-  assets:
-    - assets/images/
