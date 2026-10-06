@@ -48,6 +48,8 @@ coverage/
 # Variables de entorno / credenciales locales (Supabase, etc.)
 .env
 *.env.local
+# Llaves de Supabase para --dart-define-from-file (cada quien tiene la suya)
+env.json
 
 # Plataformas generadas por `flutter create .` (se versionan las carpetas,
 # pero no los archivos efímeros que Flutter regenera en cada build)

@@ -29,11 +29,23 @@ lib/
    ```bash
    flutter pub get
    ```
-2. Ejecutar pasando las credenciales de Supabase (nunca se hardcodean en el código):
+2. Configurar las llaves de Supabase (una sola vez):
    ```bash
-   flutter run \
-     --dart-define=SUPABASE_URL=https://tu-proyecto.supabase.co \
-     --dart-define=SUPABASE_ANON_KEY=tu-anon-key
+   cp env.example.json env.json
+   ```
+   Edita `env.json` con la URL y la anon key del proyecto (pídelas al equipo).
+   `env.json` está en `.gitignore`: **nunca se sube al repo**.
+
+   Ejecutar en Chrome o en un celular conectado por USB:
+   ```bash
+   flutter devices                                  # lista los dispositivos
+   flutter run -d chrome --dart-define-from-file=env.json
+   flutter run -d <id-del-celular> --dart-define-from-file=env.json
+   ```
+   Generar un APK para instalarlo en cualquier Android:
+   ```bash
+   flutter build apk --release --dart-define-from-file=env.json
+   # queda en build/app/outputs/flutter-apk/app-release.apk
    ```
 3. Verificar el análisis estático antes de subir cualquier cambio:
    ```bash
