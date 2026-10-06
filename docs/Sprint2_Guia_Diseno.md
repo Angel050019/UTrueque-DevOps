@@ -5,6 +5,8 @@ De: Equipo de Desarrollo
 
 La lógica de HU-02 ya está hecha y probada. Las pantallas funcionan, pero están "en blanco y negro": solo usan widgets básicos de Material. Tu trabajo es darles el diseño final **sin tocar la lógica**. Esta guía te dice qué hay, qué puedes cambiar y cómo conectar cada botón.
 
+> **Actualización (6 de octubre):** el diseño ya está implementado en la rama `feature/HU-02-perfil-ui` con la paleta del logo (azul marino `#033B56` + menta `#96FCCA`). El diseño de referencia vive en Figma ("UTrueque – Diseño App (Sprint 2)"). Los colores están en `AppColores` (`core/theme/app_theme.dart`) con los mismos nombres que las variables de Figma; los textos en `AppTexto` (Poppins para títulos, Inter para el resto); y los componentes compartidos en `core/widgets/` (`PrimaryButton`, `SecondaryButton`, `AppTextField`, `AppLogo`, `BarraSuperior`, `EnlaceTexto`, `mostrarMensaje`).
+
 ---
 
 ## 1. Las pantallas

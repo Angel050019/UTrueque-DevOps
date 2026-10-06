@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/app_ui.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../domain/usecases/resolver_destino_inicial.dart';
 import '../navegacion_inicial.dart';
@@ -37,19 +39,79 @@ class _SplashPageState extends State<SplashPage> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.storefront, size: 72),
-            SizedBox(height: 16),
-            Text('UTrueque', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
-            SizedBox(height: 24),
-            CircularProgressIndicator(),
-          ],
-        ),
+    return Scaffold(
+      backgroundColor: AppColores.primario,
+      body: Stack(
+        children: [
+          // Círculos decorativos del diseño.
+          Positioned(
+            top: -90,
+            right: -140,
+            child: _Circulo(diametro: 320, color: AppColores.sobrePrimario.withValues(alpha: 0.06)),
+          ),
+          Positioned(
+            bottom: -60,
+            left: -110,
+            child: _Circulo(diametro: 260, color: AppColores.acento.withValues(alpha: 0.18)),
+          ),
+          SafeArea(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const AppLogo(ancho: 260),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Compra, vende e intercambia\ndentro de tu universidad',
+                    textAlign: TextAlign.center,
+                    style: AppTexto.cuerpo(
+                      color: AppColores.sobrePrimario.withValues(alpha: 0.85),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+                  const SizedBox(
+                    width: 28,
+                    height: 28,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      color: AppColores.acento,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 32,
+            child: Text(
+              'Universidad Tecnológica de San Juan del Río',
+              textAlign: TextAlign.center,
+              style: AppTexto.cuerpo(
+                size: 12,
+                color: AppColores.sobrePrimario.withValues(alpha: 0.7),
+              ),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+}
+
+class _Circulo extends StatelessWidget {
+  const _Circulo({required this.diametro, required this.color});
+
+  final double diametro;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: diametro,
+      height: diametro,
+      decoration: BoxDecoration(shape: BoxShape.circle, color: color),
     );
   }
 }
