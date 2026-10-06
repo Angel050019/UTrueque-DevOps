@@ -33,7 +33,7 @@ Por eso, "probar el API REST" significa comprobar que **la app envía las petici
 
 | Módulo | Historia | Estado de pruebas |
 | --- | --- | --- |
-| Autenticación institucional (`@alumno.utsjr.edu.mx`) | HU-01 | **Automatizado (7 casos AAA)** |
+| Autenticación institucional (`@utsjr.edu.mx`) | HU-01 | **Automatizado (7 casos AAA)** |
 | Perfil (división y carrera) | HU-02 | Planeado — Sprint 2 |
 | Publicaciones y catálogo | HU-03 / HU-04 | Planeado — Sprints 3-4 |
 | Trueques y chat | HU-05+ | Planeado — Sprints 5-7 |
@@ -108,7 +108,7 @@ Cada caso sigue el patrón **AAA**:
 ### 2.1 CP-01. Inicio de sesión exitoso con correo institucional
 
 - **Arrange:** el API responde 200 con una sesión válida y la tabla `usuarios` devuelve el perfil del alumno. Hay conexión a internet.
-- **Act:** se llama a `IniciarSesion` con `ana.lopez@alumno.utsjr.edu.mx`.
+- **Act:** se llama a `IniciarSesion` con `ana.lopez@utsjr.edu.mx`.
 - **Assert:** el usuario devuelto tiene id, correo confirmado, nombre y carrera; la app hizo exactamente 2 peticiones (login y perfil), la del perfil filtra por `id=eq.<id>` y lleva el token `Bearer` de la sesión.
 
 <details><summary>Ver código</summary>
