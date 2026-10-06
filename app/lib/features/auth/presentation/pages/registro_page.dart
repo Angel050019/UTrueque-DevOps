@@ -72,7 +72,7 @@ class _RegistroPageState extends State<RegistroPage> {
               children: [
                 AppTextField(
                   controller: _correoController,
-                  label: 'Correo institucional (@alumno.utsjr.edu.mx)',
+                  label: 'Correo institucional (@utsjr.edu.mx)',
                   tipoTeclado: TextInputType.emailAddress,
                   textoError: _errorCorreo,
                 ),

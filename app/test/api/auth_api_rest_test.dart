@@ -33,7 +33,7 @@ const String _anonKey = 'anon-key-de-pruebas';
 const String _tokenAcceso = 'token-de-acceso-de-pruebas';
 
 const String _idAlumno = '7f1c2a9e-0000-4000-8000-000000000001';
-const String _correoAlumno = 'ana.lopez@alumno.utsjr.edu.mx';
+const String _correoAlumno = 'ana.lopez@utsjr.edu.mx';
 const String _contrasena = 'Contrasena123';
 
 /// Servidor HTTP simulado que imita las respuestas del API REST de Supabase
