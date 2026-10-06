@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../models/usuario_model.dart';
 
@@ -11,6 +12,10 @@ abstract class AuthRemoteDataSource {
   Future<UsuarioModel> iniciarSesion({required String correo, required String contrasena});
   Future<void> cerrarSesion();
   UsuarioModel? get usuarioActual;
+
+  /// HU-02: usuario de la sesión guardada junto con su fila de `usuarios`
+  /// (incluye `perfil_completo`). `null` si no hay sesión.
+  Future<UsuarioModel?> obtenerSesionActual();
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -59,6 +64,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<void> cerrarSesion() => _client.auth.signOut();
+
+  @override
+  Future<UsuarioModel?> obtenerSesionActual() async {
+    final User? usuario = _client.auth.currentUser;
+    if (usuario == null) return null;
+    try {
+      final Map<String, dynamic>? perfil = await _client
+          .from(AppConstants.tablaUsuarios)
+          .select()
+          .eq('id', usuario.id)
+          .maybeSingle();
+      return UsuarioModel.fromSupabaseUser(usuario, perfil: perfil);
+    } on PostgrestException catch (_) {
+      throw const ServidorFailure();
+    }
+  }
 
   @override
   UsuarioModel? get usuarioActual {

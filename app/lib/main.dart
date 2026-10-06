@@ -6,9 +6,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/constants/app_constants.dart';
 import 'core/network/network_info.dart';
 import 'core/routes/app_routes.dart';
+import 'core/theme/app_theme.dart';
 import 'features/auth/data/datasources/auth_remote_datasource.dart';
 import 'features/auth/data/repositories/auth_repository_impl.dart';
 import 'features/auth/domain/repositories/auth_repository.dart';
+import 'features/auth/domain/usecases/cerrar_sesion.dart';
 import 'features/auth/domain/usecases/iniciar_sesion.dart';
 import 'features/auth/domain/usecases/registrar_usuario.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
@@ -17,6 +19,16 @@ import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/registro_page.dart';
 import 'features/auth/presentation/pages/splash_page.dart';
 import 'features/feed/presentation/pages/feed_placeholder_page.dart';
+import 'features/perfil/data/datasources/perfil_remote_datasource.dart';
+import 'features/perfil/data/repositories/perfil_repository_impl.dart';
+import 'features/perfil/domain/repositories/perfil_repository.dart';
+import 'features/perfil/domain/usecases/actualizar_perfil.dart';
+import 'features/perfil/domain/usecases/obtener_catalogo_academico.dart';
+import 'features/perfil/domain/usecases/obtener_perfil.dart';
+import 'features/perfil/presentation/cubit/perfil_cubit.dart';
+import 'features/perfil/presentation/pages/completar_perfil_page.dart';
+import 'features/perfil/presentation/pages/editar_perfil_page.dart';
+import 'features/perfil/presentation/pages/mi_perfil_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,7 +39,6 @@ Future<void> main() async {
   //     --dart-define=SUPABASE_URL=https://xxxx.supabase.co \
   //     --dart-define=SUPABASE_ANON_KEY=xxxxx
   // En CI, estos valores viven en GitHub Secrets.
-// Después:
   await Supabase.initialize(
     url: const String.fromEnvironment(AppConstants.supabaseUrlEnvKey),
     publishableKey: const String.fromEnvironment(AppConstants.supabaseAnonKeyEnvKey),
@@ -48,21 +59,31 @@ class UTruequeApp extends StatelessWidget {
         AuthRemoteDataSourceImpl(Supabase.instance.client);
     final AuthRepository authRepository = AuthRepositoryImpl(dataSource);
     final NetworkInfo networkInfo = NetworkInfoImpl(Connectivity());
+    final PerfilRepository perfilRepository =
+        PerfilRepositoryImpl(PerfilRemoteDataSourceImpl(Supabase.instance.client));
 
-    return RepositoryProvider<AuthRepository>.value(
-      value: authRepository,
+    // Factory Method: cada pantalla de perfil recibe su propio PerfilCubit.
+    PerfilCubit crearPerfilCubit() => PerfilCubit(
+          obtenerPerfil: ObtenerPerfil(perfilRepository, networkInfo),
+          obtenerCatalogo: ObtenerCatalogoAcademico(perfilRepository, networkInfo),
+          actualizarPerfil: ActualizarPerfil(perfilRepository, networkInfo),
+        );
+
+    return MultiRepositoryProvider(
+      providers: [
+        RepositoryProvider<AuthRepository>.value(value: authRepository),
+        RepositoryProvider<PerfilRepository>.value(value: perfilRepository),
+      ],
       child: BlocProvider(
         create: (_) => AuthCubit(
           registrarUsuario: RegistrarUsuario(authRepository),
           iniciarSesion: IniciarSesion(authRepository, networkInfo),
+          cerrarSesion: CerrarSesion(authRepository),
         ),
         child: MaterialApp(
           title: 'UTrueque',
           debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            colorSchemeSeed: Colors.indigo,
-            useMaterial3: true,
-          ),
+          theme: AppTheme.claro,
           initialRoute: AppRoutes.splash,
           routes: {
             AppRoutes.splash: (_) => const SplashPage(),
@@ -70,6 +91,19 @@ class UTruequeApp extends StatelessWidget {
             AppRoutes.registro: (_) => const RegistroPage(),
             AppRoutes.confirmacionRegistro: (_) => const ConfirmacionRegistroPage(),
             AppRoutes.feedPrincipal: (_) => const FeedPlaceholderPage(),
+            // HU-02: Perfil Académico
+            AppRoutes.completarPerfil: (_) => BlocProvider(
+                  create: (_) => crearPerfilCubit()..cargarMiPerfil(),
+                  child: const CompletarPerfilPage(),
+                ),
+            AppRoutes.miPerfil: (_) => BlocProvider(
+                  create: (_) => crearPerfilCubit()..cargarMiPerfil(conCatalogo: false),
+                  child: const MiPerfilPage(),
+                ),
+            AppRoutes.editarPerfil: (_) => BlocProvider(
+                  create: (_) => crearPerfilCubit()..cargarMiPerfil(),
+                  child: const EditarPerfilPage(),
+                ),
           },
         ),
       ),

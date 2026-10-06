@@ -15,7 +15,7 @@ void main() {
   late _MockNetworkInfo networkInfo;
   late IniciarSesion iniciarSesion;
 
-  const String correo = 'ana.lopez@alumno.utsjr.edu.mx';
+  const String correo = 'ana.lopez@utsjr.edu.mx';
   const String contrasena = 'contrasena123';
 
   setUp(() {

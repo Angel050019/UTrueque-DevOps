@@ -34,6 +34,11 @@ class AuthLoginExitoso extends AuthState {
   List<Object?> get props => [usuario];
 }
 
+/// HU-02: la sesión se cerró correctamente; la UI debe ir al login.
+class AuthSesionCerrada extends AuthState {
+  const AuthSesionCerrada();
+}
+
 class AuthError extends AuthState {
   const AuthError(this.failure);
   final Failure failure;

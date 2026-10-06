@@ -10,6 +10,7 @@ class Usuario extends Equatable {
     this.division,
     this.carrera,
     this.correoConfirmado = false,
+    this.perfilCompleto = false,
   });
 
   final String id;
@@ -19,6 +20,18 @@ class Usuario extends Equatable {
   final String? carrera;
   final bool correoConfirmado;
 
+  /// HU-02: `true` cuando el estudiante ya completó su perfil académico.
+  /// Decide si después del login va al Feed o a "Completar perfil".
+  final bool perfilCompleto;
+
   @override
-  List<Object?> get props => [id, correo, nombreMostrar, division, carrera, correoConfirmado];
+  List<Object?> get props => [
+        id,
+        correo,
+        nombreMostrar,
+        division,
+        carrera,
+        correoConfirmado,
+        perfilCompleto,
+      ];
 }

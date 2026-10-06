@@ -5,7 +5,7 @@
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 ##  Descripción del Proyecto
-UTrueque es una plataforma móvil orientada a la comunidad universitaria de la UTSJR que facilita la compra, venta, trueque y donación segura de materiales académicos, libros y herramientas. La plataforma garantiza un entorno de confianza exigiendo autenticación obligatoria mediante correo institucional (`@alumno.utsjr.edu.mx`).
+UTrueque es una plataforma móvil orientada a la comunidad universitaria de la UTSJR que facilita la compra, venta, trueque y donación segura de materiales académicos, libros y herramientas. La plataforma garantiza un entorno de confianza exigiendo autenticación obligatoria mediante correo institucional (`@utsjr.edu.mx`).
 
 ---
 

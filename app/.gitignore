@@ -48,3 +48,22 @@ coverage/
 # Variables de entorno / credenciales locales (Supabase, etc.)
 .env
 *.env.local
+# Llaves de Supabase para --dart-define-from-file (cada quien tiene la suya)
+env.json
+
+# Plataformas generadas por `flutter create .` (se versionan las carpetas,
+# pero no los archivos efímeros que Flutter regenera en cada build)
+**/android/app/debug
+**/android/app/profile
+**/android/app/release
+**/android/.kotlin/
+**/android/app/.cxx/
+**/ios/Flutter/ephemeral/
+**/macos/Flutter/ephemeral/
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+**/macos/Pods/
+**/linux/flutter/ephemeral/
+**/windows/flutter/ephemeral/
+**/doc/api/
+.build/
+.swiftpm/

@@ -1,7 +1,7 @@
 # Plan DevOps del Proyecto Móvil - UTrueque
 
 ## 1. Resumen del Caso y Objetivos
-UTrueque es una aplicación móvil diseñada para facilitar la compra, venta, trueque y donación de insumos académicos dentro de la comunidad universitaria. Garantiza un entorno seguro exigiendo autenticación mediante correo institucional (`@alumno.utsjr.edu.mx`) y filtrado por carrera.
+UTrueque es una aplicación móvil diseñada para facilitar la compra, venta, trueque y donación de insumos académicos dentro de la comunidad universitaria. Garantiza un entorno seguro exigiendo autenticación mediante correo institucional (`@utsjr.edu.mx`) y filtrado por carrera.
 
 ### Objetivos
 * Implementar un ciclo ágil DevOps estructurado en 10 Sprints de 1 semana.
