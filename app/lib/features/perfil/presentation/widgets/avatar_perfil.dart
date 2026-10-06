@@ -31,7 +31,7 @@ class AvatarPerfil extends StatelessWidget {
     if (partes.isEmpty) return '';
     final String primera = partes.first.substring(0, 1);
     final String segunda = partes.length > 1 ? partes[1].substring(0, 1) : '';
-    return (primera + segunda).toUpperCase();
+    return '$primera$segunda'.toUpperCase();
   }
 
   @override

@@ -7,8 +7,8 @@ on:
     branches: [ main, develop ]
 
 jobs:
+  # El id "validate" es el nombre del check obligatorio en la protección de ramas.
   validate:
-    name: Análisis, pruebas y Quality Gate
     runs-on: ubuntu-latest
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -45,7 +45,14 @@ jobs:
 
       - name: Análisis estático (flutter analyze)
         working-directory: app
-        run: flutter analyze
+        run: |
+          # Si hay problemas, se publican como anotaciones en el PR (archivo y línea).
+          if ! flutter analyze > analyze.txt 2>&1; then
+            cat analyze.txt
+            awk -F ' • ' '/^ *(info|warning|error) • /{ split($3, u, ":"); printf "::error file=app/%s,line=%s::%s (%s)\n", u[1], u[2], $2, $4 }' analyze.txt
+            exit 1
+          fi
+          cat analyze.txt
 
       - name: Pruebas unitarias y del API REST (patrón AAA) con cobertura
         working-directory: app

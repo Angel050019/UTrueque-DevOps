@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/app_ui.dart';
 import '../../../auth/domain/entities/usuario.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../../perfil/domain/entities/perfil.dart';
