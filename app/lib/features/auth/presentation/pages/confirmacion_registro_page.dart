@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/routes/app_routes.dart';
+import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/primary_button.dart';
 
 /// Pantalla 3 - Confirmación de registro.
@@ -12,25 +13,42 @@ class ConfirmacionRegistroPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.mark_email_read_outlined, size: 72),
-            const SizedBox(height: 24),
-            const Text(
-              'Revisa tu correo institucional para confirmar tu cuenta antes de iniciar sesión.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 32),
-            PrimaryButton(
-              texto: 'Ir a iniciar sesión',
-              onPressed: () => Navigator.of(context)
-                  .pushNamedAndRemoveUntil(AppRoutes.login, (route) => false),
-            ),
-          ],
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(AppMedidas.margen),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 112,
+                height: 112,
+                decoration: const BoxDecoration(
+                  color: AppColores.acentoSuave,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.mark_email_read_rounded,
+                  size: 52,
+                  color: AppColores.primario,
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text('Revisa tu correo', style: AppTexto.titulo(size: 24)),
+              const SizedBox(height: 8),
+              Text(
+                'Te enviamos un enlace a tu correo institucional. Confírmalo antes de '
+                'iniciar sesión.',
+                textAlign: TextAlign.center,
+                style: AppTexto.cuerpo(),
+              ),
+              const SizedBox(height: 32),
+              PrimaryButton(
+                texto: 'Ir a iniciar sesión',
+                onPressed: () => Navigator.of(context)
+                    .pushNamedAndRemoveUntil(AppRoutes.login, (route) => false),
+              ),
+            ],
+          ),
         ),
       ),
     );
