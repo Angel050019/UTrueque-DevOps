@@ -6,20 +6,57 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_ui.dart';
 import '../../../auth/domain/entities/usuario.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
+import '../../../perfil/domain/entities/perfil.dart';
+import '../../../perfil/domain/repositories/perfil_repository.dart';
+import '../../../perfil/presentation/widgets/avatar_perfil.dart';
 
 /// Placeholder temporal del Feed principal.
 /// El Feed real (HU-05) llega en un sprint posterior; por ahora muestra el
 /// saludo, el buscador y los filtros (sin funcionalidad) y da acceso a
 /// "Mi perfil" desde el avatar.
-class FeedPlaceholderPage extends StatelessWidget {
+class FeedPlaceholderPage extends StatefulWidget {
   const FeedPlaceholderPage({super.key});
 
+  @override
+  State<FeedPlaceholderPage> createState() => _FeedPlaceholderPageState();
+}
+
+class _FeedPlaceholderPageState extends State<FeedPlaceholderPage> {
   static const List<String> _filtros = ['Todo', 'Libros', 'Calculadoras', 'Batas'];
+
+  /// Perfil del estudiante (nombre y foto). Mientras carga es null.
+  Perfil? _perfil;
+
+  /// Evita mostrar el correo un instante antes de que llegue el nombre.
+  bool _cargado = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _cargarPerfil();
+  }
+
+  Future<void> _cargarPerfil() async {
+    try {
+      final Perfil perfil = await context.read<PerfilRepository>().obtenerPerfilPropio();
+      if (mounted) setState(() => _perfil = perfil);
+    } catch (_) {
+      // Si falla (por ejemplo, sin internet) se usa el correo como respaldo.
+    } finally {
+      if (mounted) setState(() => _cargado = true);
+    }
+  }
+
+  Future<void> _irAMiPerfil() async {
+    await Navigator.of(context).pushNamed(AppRoutes.miPerfil);
+    // Al regresar se recarga por si el estudiante editó su nombre o foto.
+    await _cargarPerfil();
+  }
 
   @override
   Widget build(BuildContext context) {
     final Usuario? usuario = context.read<AuthRepository>().usuarioActual;
-    final String nombre = _primerNombre(usuario);
+    final String nombre = _primerNombre(_perfil?.nombreMostrar, usuario);
 
     return Scaffold(
       body: SafeArea(
@@ -35,7 +72,7 @@ class FeedPlaceholderPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Hola, $nombre', style: AppTexto.titulo(size: 24)),
+                        Text(_cargado ? 'Hola, $nombre' : 'Hola', style: AppTexto.titulo(size: 24)),
                         Text('¿Qué necesitas hoy?', style: AppTexto.cuerpo(size: 14)),
                       ],
                     ),
@@ -45,14 +82,11 @@ class FeedPlaceholderPage extends StatelessWidget {
                     child: InkWell(
                       key: const Key('feed_mi_perfil_boton'),
                       customBorder: const CircleBorder(),
-                      onTap: () => Navigator.of(context).pushNamed(AppRoutes.miPerfil),
-                      child: CircleAvatar(
-                        radius: 22,
-                        backgroundColor: AppColores.primarioSuave,
-                        child: Text(
-                          _iniciales(nombre),
-                          style: AppTexto.subtitulo(size: 15, color: AppColores.primario),
-                        ),
+                      onTap: _irAMiPerfil,
+                      child: AvatarPerfil(
+                        fotoUrl: _perfil?.fotoUrl,
+                        nombre: _perfil?.nombreMostrar ?? nombre,
+                        radio: 24,
                       ),
                     ),
                   ),
@@ -132,17 +166,16 @@ class FeedPlaceholderPage extends StatelessWidget {
     );
   }
 
-  static String _primerNombre(Usuario? usuario) {
-    final String? nombre = usuario?.nombreMostrar;
-    if (nombre != null && nombre.trim().isNotEmpty) {
-      return nombre.trim().split(' ').first;
+  /// Primer nombre del perfil; si aún no carga, el del usuario o el correo.
+  static String _primerNombre(String? nombrePerfil, Usuario? usuario) {
+    for (final String? nombre in [nombrePerfil, usuario?.nombreMostrar]) {
+      if (nombre != null && nombre.trim().isNotEmpty) {
+        return nombre.trim().split(RegExp(r'\s+')).first;
+      }
     }
     final String correo = usuario?.correo ?? '';
     return correo.contains('@') ? correo.split('@').first : 'estudiante';
   }
-
-  static String _iniciales(String nombre) =>
-      nombre.isEmpty ? '?' : nombre.substring(0, 1).toUpperCase();
 }
 
 class _Filtro extends StatelessWidget {
