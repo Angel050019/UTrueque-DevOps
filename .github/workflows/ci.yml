@@ -5,6 +5,9 @@ on:
     branches: [ develop ]
   pull_request:
     branches: [ main, develop ]
+  # Permite lanzar el pipeline a mano (botón "Run workflow" en GitHub o el
+  # botón "Lanzar pipeline" del agente en tools/agente-pipeline/).
+  workflow_dispatch:
 
 # Si llega un push nuevo al mismo PR, se cancela la corrida anterior.
 concurrency:
