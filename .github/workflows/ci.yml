@@ -6,15 +6,25 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+# Si llega un push nuevo al mismo PR, se cancela la corrida anterior.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # El id "validate" es el nombre del check obligatorio en la protección de ramas.
   validate:
     runs-on: ubuntu-latest
     env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      # Solo se expone "true"/"false"; el token en sí solo llega al paso de SonarQube.
+      TIENE_SONAR: ${{ secrets.SONAR_TOKEN != '' }}
+      # Plan Free de SonarQube Cloud: solo analiza la rama principal del proyecto
+      # y los PR que apuntan a ella. En SonarQube Cloud la rama principal se
+      # renombró a "develop" (ver docs/Plan_de_Pruebas.md, sección 3.3).
+      SONAR_RAMA_PRINCIPAL: develop
     steps:
       - name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           # SonarQube necesita el historial completo para detectar "código nuevo"
           fetch-depth: 0
@@ -26,12 +36,6 @@ jobs:
           test -d app || exit 1
           test -f app/pubspec.yaml || exit 1
           echo "Estructura base verificada correctamente."
-
-      - name: Setup Java JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'zulu'
-          java-version: '17'
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -64,18 +68,30 @@ jobs:
 
       - name: Publicar reporte de cobertura
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: cobertura-lcov
           path: app/coverage/lcov.info
           if-no-files-found: ignore
 
+      - name: ¿Corre SonarQube en este evento?
+        id: sonar
+        run: |
+          RAMA="${{ github.base_ref || github.ref_name }}"
+          if [ "$TIENE_SONAR" != "true" ]; then
+            echo "::warning::Falta el secreto SONAR_TOKEN. Se omitió el análisis de SonarQube Cloud (ver docs/Plan_de_Pruebas.md, sección 3.3)."
+            echo "correr=false" >> "$GITHUB_OUTPUT"
+          elif [ "$RAMA" != "$SONAR_RAMA_PRINCIPAL" ]; then
+            echo "::notice::SonarQube Cloud (plan Free) solo analiza '$SONAR_RAMA_PRINCIPAL' y los PR hacia ella. Se omite para '$RAMA'."
+            echo "correr=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "correr=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Análisis SonarQube Cloud + Quality Gate
-        if: ${{ env.SONAR_TOKEN != '' }}
-        uses: SonarSource/sonarqube-scan-action@v5
+        if: steps.sonar.outputs.correr == 'true'
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           projectBaseDir: app
-
-      - name: Aviso - SonarQube aún no configurado
-        if: ${{ env.SONAR_TOKEN == '' }}
-        run: echo "::warning::Falta el secreto SONAR_TOKEN. Se omitió el análisis de SonarQube Cloud (ver docs/Plan_de_Pruebas.md, sección 3.3)."
