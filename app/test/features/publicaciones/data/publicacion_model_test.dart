@@ -8,7 +8,7 @@ import '../fixtures.dart';
 void main() {
   group('PublicacionModel', () {
     test('fromMap convierte una fila de Venta con precio numérico', () {
-      final PublicacionModel modelo = PublicacionModel.fromMap(<String, dynamic>{
+      final PublicacionModel modelo = PublicacionModel.fromMap(const <String, dynamic>{
         'id': 'pub-1',
         'usuario_id': idAlumno,
         'titulo': tituloValido,
@@ -93,7 +93,7 @@ void main() {
   group('CategoriaModel', () {
     test('fromMap convierte una fila del catálogo', () {
       final CategoriaModel modelo =
-          CategoriaModel.fromMap(<String, dynamic>{'id': 2, 'nombre': 'Calculadoras', 'orden': 2});
+          CategoriaModel.fromMap(const <String, dynamic>{'id': 2, 'nombre': 'Calculadoras', 'orden': 2});
 
       expect(modelo.id, categoriaCalculadoras.id);
       expect(modelo.nombre, categoriaCalculadoras.nombre);

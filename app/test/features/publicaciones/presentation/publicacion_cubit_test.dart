@@ -277,9 +277,9 @@ void main() {
     blocTest<PublicacionCubit, PublicacionState>(
       'descartarError vuelve al formulario conservando los campos en rojo',
       build: crearCubit,
-      seed: () => PublicacionError(
-        const PublicacionInvalidaFailure({CampoPublicacion.titulo: 'Escribe un título de 3 a 80 caracteres.'}),
-        datos: const PublicacionDatos(
+      seed: () => const PublicacionError(
+        PublicacionInvalidaFailure({CampoPublicacion.titulo: 'Escribe un título de 3 a 80 caracteres.'}),
+        datos: PublicacionDatos(
           errores: {CampoPublicacion.titulo: 'Escribe un título de 3 a 80 caracteres.'},
         ),
       ),
