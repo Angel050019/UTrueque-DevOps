@@ -20,8 +20,8 @@ UTrueque no tiene un servidor propio. Su **API REST es la que expone Supabase**:
 | Servicio de Supabase | Endpoints que usa la app | Para qué |
 | --- | --- | --- |
 | Auth (GoTrue) | `POST /auth/v1/signup`, `POST /auth/v1/token?grant_type=password`, `POST /auth/v1/logout` | Registro, inicio y cierre de sesión |
-| PostgREST | `GET/PATCH /rest/v1/usuarios`, `/rest/v1/divisiones`, `/rest/v1/carreras` | Perfil del alumno y catálogos |
-| Storage | `POST /storage/v1/object/...` | Fotos de perfil y de publicaciones |
+| PostgREST | `GET/PATCH /rest/v1/usuarios`, `/rest/v1/divisiones`, `/rest/v1/carreras`, `GET /rest/v1/categorias`, `POST /rest/v1/publicaciones` | Perfil del alumno, catálogos y publicaciones |
+| Storage | `POST` y `DELETE /storage/v1/object/...` | Fotos de perfil y de publicaciones |
 
 Por eso, "probar el API REST" significa comprobar que **la app envía las peticiones correctas y reacciona bien a cada respuesta** del servidor (200, 204, 400, 422, sin red).
 
@@ -35,7 +35,7 @@ Por eso, "probar el API REST" significa comprobar que **la app envía las petici
 | --- | --- | --- |
 | Autenticación institucional (`@utsjr.edu.mx`) | HU-01 | **Automatizado (7 casos AAA)** |
 | Perfil (división y carrera) | HU-02 | Planeado — Sprint 2 |
-| Publicaciones y catálogo | HU-03 / HU-04 | Planeado — Sprints 3-4 |
+| Publicaciones y catálogo | HU-03 / HU-04 | HU-03: **Automatizado (10 casos AAA, CP-08 a CP-17)** — Sprint 3; HU-04 planeado |
 | Trueques y chat | HU-05+ | Planeado — Sprints 5-7 |
 
 ### 1.2 Estrategia: cómo se prueba el API sin depender de internet
@@ -398,18 +398,20 @@ test(
 
 ### 3.1 Dónde se aplica
 
-El Quality Gate se ejecuta en GitHub Actions ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) en cada push a `develop` y en cada Pull Request hacia `develop` o `main`:
+El Quality Gate se ejecuta en GitHub Actions ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) dentro del check obligatorio `validate`:
 
 1. `flutter analyze`: análisis estático del analizador de Dart.
 2. `flutter test --coverage`: pruebas unitarias y del API REST, con reporte `lcov.info`.
 3. **Gate de cobertura propio:** [`.github/scripts/quality_gate_cobertura.sh`](../.github/scripts/quality_gate_cobertura.sh) falla si la cobertura de dominio y datos es menor al 80 %.
-4. **SonarQube Cloud:** analiza `app/lib`, importa la cobertura y espera el resultado del Quality Gate (`sonar.qualitygate.wait=true`). Si el resultado es **FAILED**, el pipeline se detiene (Fail-Fast) y el PR no se puede integrar.
+4. **SonarQube Cloud** (`SonarSource/sonarqube-scan-action@v7`): analiza `app/lib`, importa la cobertura y espera el resultado del Quality Gate (`sonar.qualitygate.wait=true`). Si el resultado es **FAILED**, el pipeline se detiene (Fail-Fast) y el PR no se puede integrar.
+
+El plan **Free** de SonarQube Cloud solo analiza la rama principal del proyecto y los Pull Requests que apuntan a ella. Como el equipo integra todo en `develop`, en SonarQube Cloud la rama principal se llama `develop`. Por eso SonarQube corre en cada **push a `develop`** y en cada **PR hacia `develop`**; en los PR de `develop` hacia `main` (releases) se omite con un aviso, y ahí siguen aplicando los pasos 1 a 3.
 
 La configuración está en [`app/sonar-project.properties`](../app/sonar-project.properties).
 
 ### 3.2 Condiciones del Quality Gate
 
-SonarQube Cloud analiza Dart/Flutter de forma nativa. En el plan gratuito se usa el gate **"Sonar way"**, que evalúa el **código nuevo** de cada Pull Request:
+SonarQube Cloud analiza Dart/Flutter de forma nativa (también en el plan Free). En el plan Free no se pueden crear gates personalizados, así que se usa el gate integrado **"Sonar way"**, que evalúa el **código nuevo** (en un PR, las líneas que cambió el PR):
 
 | Condición (código nuevo) | Umbral |
 | --- | --- |
@@ -420,17 +422,17 @@ SonarQube Cloud analiza Dart/Flutter de forma nativa. En el plan gratuito se usa
 | Cobertura de pruebas | ≥ 80 % |
 | Líneas duplicadas | ≤ 3 % |
 
-Como el plan gratuito no permite crear gates personalizados, el equipo agrega su propio **gate de cobertura en CI** (paso 3), que exige ≥ 80 % sobre todo el código de dominio y datos, no solo sobre el código nuevo.
+Las condiciones de cobertura y duplicación solo se evalúan cuando hay al menos 20 líneas nuevas. Como complemento, el equipo tiene su propio **gate de cobertura en CI** (paso 3), que exige ≥ 80 % sobre todo el código de dominio y datos, no solo sobre el código nuevo.
 
-**Exclusiones de cobertura:** `main.dart`, pantallas (`presentation/pages`), widgets visuales y rutas. Esas partes se validan con pruebas de widgets e integración, no con pruebas unitarias.
+**Exclusiones de cobertura:** `main.dart`, pantallas (`presentation/pages`), widgets visuales (`presentation/widgets` y `core/widgets`), tema y rutas. Esas partes se validan con pruebas de widgets e integración, no con pruebas unitarias. Los Cubits, casos de uso, repositorios y utilidades sí cuentan.
 
 ### 3.3 Activación (una sola vez, la hace el dueño del repo)
 
-1. Entrar a [sonarcloud.io](https://sonarcloud.io) con GitHub e importar la organización `angel050019` y el repositorio `UTrueque-DevOps`.
+1. Entrar a [sonarcloud.io](https://sonarcloud.io) con GitHub, importar la organización `angel050019` (plan **Free**) y analizar el repositorio `UTrueque-DevOps`.
 2. En el proyecto: *Administration → Analysis Method* → desactivar **Automatic Analysis** (el análisis lo hace GitHub Actions).
-3. Generar un token en *My Account → Security* y guardarlo en GitHub como secreto `SONAR_TOKEN` (*Settings → Secrets and variables → Actions*).
-4. Verificar que `sonar.organization` y `sonar.projectKey` en `app/sonar-project.properties` coincidan con lo que muestra SonarQube Cloud.
-5. (Opcional) En GitHub, *Settings → Branches*: marcar el check **"Análisis, pruebas y Quality Gate"** como obligatorio para `develop` y `main`.
+3. En *Administration → Branches and Pull Requests*: renombrar la rama principal (`main`) a **`develop`**.
+4. Generar un token en *My Account → Security* y guardarlo en GitHub como secreto `SONAR_TOKEN` (*Settings → Secrets and variables → Actions*).
+5. Verificar que `sonar.organization` y `sonar.projectKey` en `app/sonar-project.properties` coincidan con lo que muestra SonarQube Cloud (*Information* del proyecto).
 
 Mientras no exista el secreto, el pipeline corre las pruebas y el gate de cobertura, y muestra un aviso de que se omitió SonarQube.
 

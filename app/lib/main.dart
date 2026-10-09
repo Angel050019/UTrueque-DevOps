@@ -29,6 +29,15 @@ import 'features/perfil/presentation/cubit/perfil_cubit.dart';
 import 'features/perfil/presentation/pages/completar_perfil_page.dart';
 import 'features/perfil/presentation/pages/editar_perfil_page.dart';
 import 'features/perfil/presentation/pages/mi_perfil_page.dart';
+import 'features/publicaciones/data/datasources/publicacion_remote_datasource.dart';
+import 'features/publicaciones/data/repositories/publicacion_repository_impl.dart';
+import 'features/publicaciones/domain/repositories/publicacion_repository.dart';
+import 'features/publicaciones/domain/usecases/crear_publicacion.dart';
+import 'features/publicaciones/domain/usecases/obtener_categorias.dart';
+import 'features/publicaciones/domain/usecases/obtener_publicaciones_recientes.dart';
+import 'features/publicaciones/presentation/cubit/publicaciones_recientes_cubit.dart';
+import 'features/publicaciones/presentation/cubit/publicacion_cubit.dart';
+import 'features/publicaciones/presentation/pages/publicar_articulo_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -61,6 +70,9 @@ class UTruequeApp extends StatelessWidget {
     final NetworkInfo networkInfo = NetworkInfoImpl(Connectivity());
     final PerfilRepository perfilRepository =
         PerfilRepositoryImpl(PerfilRemoteDataSourceImpl(Supabase.instance.client));
+    final PublicacionRepository publicacionRepository = PublicacionRepositoryImpl(
+      PublicacionRemoteDataSourceImpl(Supabase.instance.client),
+    );
 
     // Factory Method: cada pantalla de perfil recibe su propio PerfilCubit.
     PerfilCubit crearPerfilCubit() => PerfilCubit(
@@ -73,6 +85,7 @@ class UTruequeApp extends StatelessWidget {
       providers: [
         RepositoryProvider<AuthRepository>.value(value: authRepository),
         RepositoryProvider<PerfilRepository>.value(value: perfilRepository),
+        RepositoryProvider<PublicacionRepository>.value(value: publicacionRepository),
       ],
       child: BlocProvider(
         create: (_) => AuthCubit(
@@ -90,7 +103,12 @@ class UTruequeApp extends StatelessWidget {
             AppRoutes.login: (_) => const LoginPage(),
             AppRoutes.registro: (_) => const RegistroPage(),
             AppRoutes.confirmacionRegistro: (_) => const ConfirmacionRegistroPage(),
-            AppRoutes.feedPrincipal: (_) => const FeedPlaceholderPage(),
+            AppRoutes.feedPrincipal: (_) => BlocProvider(
+                  create: (_) => PublicacionesRecientesCubit(
+                    ObtenerPublicacionesRecientes(publicacionRepository, networkInfo),
+                  )..cargar(),
+                  child: const FeedPlaceholderPage(),
+                ),
             // HU-02: Perfil Académico
             AppRoutes.completarPerfil: (_) => BlocProvider(
                   create: (_) => crearPerfilCubit()..cargarMiPerfil(),
@@ -103,6 +121,14 @@ class UTruequeApp extends StatelessWidget {
             AppRoutes.editarPerfil: (_) => BlocProvider(
                   create: (_) => crearPerfilCubit()..cargarMiPerfil(),
                   child: const EditarPerfilPage(),
+                ),
+            // HU-03: Publicación de artículo
+            AppRoutes.publicarArticulo: (_) => BlocProvider(
+                  create: (_) => PublicacionCubit(
+                    obtenerCategorias: ObtenerCategorias(publicacionRepository, networkInfo),
+                    crearPublicacion: CrearPublicacion(publicacionRepository, networkInfo),
+                  )..cargarCategorias(),
+                  child: const PublicarArticuloPage(),
                 ),
           },
         ),
