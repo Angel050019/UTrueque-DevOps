@@ -36,6 +36,11 @@ class PublicacionKeys {
   static const Key feedError = Key('feed_publicaciones_error');
   static const Key feedReintentarBoton = Key('feed_publicaciones_reintentar');
 
+  /// Pantalla de confirmación después de publicar y sus botones.
+  static const Key confirmacion = Key('publicacion_confirmacion');
+  static const Key verPublicacionBoton = Key('publicacion_ver_boton');
+  static const Key volverInicioBoton = Key('publicacion_volver_inicio_boton');
+
   /// Tarjeta de la publicación con ese id.
   static Key tarjeta(String id) => Key('feed_publicacion_$id');
 }

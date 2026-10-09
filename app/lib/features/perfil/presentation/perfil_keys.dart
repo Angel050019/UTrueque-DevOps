@@ -19,4 +19,5 @@ class PerfilKeys {
   static const Key tarjetaPerfil = Key('perfil_tarjeta');
   static const Key cargando = Key('perfil_cargando');
   static const Key errorCarga = Key('perfil_error_carga');
+  static const Key misPublicacionesBoton = Key('perfil_mis_publicaciones_boton');
 }

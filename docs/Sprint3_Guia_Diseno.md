@@ -83,3 +83,15 @@ flutter run -d chrome --dart-define-from-file=env.json
 Entra con una cuenta con perfil completo → botón "Publicar" del Feed. Para ver los errores: presiona "Publicar artículo" sin llenar nada, o elige Venta y deja el precio vacío.
 
 Antes de subir cambios: `flutter analyze` y `flutter test` sin errores. Tu rama sale de `develop` **después** de que se fusione `feature/HU-03-publicar-articulo`; usa commits `style(publicaciones): ...` y adjunta capturas en el PR.
+
+---
+
+## 6. Pantallas agregadas después del Sprint 3
+
+| Pantalla | Archivo | Cuándo aparece | Keys que debes conservar |
+| :--- | :--- | :--- | :--- |
+| Confirmación de publicación ("Tu publicación está activa") | `features/publicaciones/presentation/pages/publicacion_confirmada_page.dart` | Después de publicar (201 Created). Se abre encima del Feed ya recargado. | `PublicacionKeys.confirmacion`, `verPublicacionBoton`, `volverInicioBoton` |
+| En desarrollo | `core/widgets/en_desarrollo_page.dart` | Al tocar una tarjeta del Feed, "Ver publicación" o "Mis publicaciones" en Mi perfil. | `EnDesarrolloPage.pantallaKey`, `EnDesarrolloPage.regresarBoton` |
+
+La confirmación sigue el diseño de Figma "Confirmación Publicación", con dos cambios: dice "compañeros de la UTSJR" (no "de facultad") y el precio usa `$`. No muestra el estado del artículo ("Como nuevo") porque ese dato todavía no existe en la base.
+

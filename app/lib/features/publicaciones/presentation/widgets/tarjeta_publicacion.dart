@@ -10,11 +10,14 @@ import '../publicacion_keys.dart';
 /// Tarjeta de una publicación en el Feed: portada a la izquierda y, a la
 /// derecha, título, categoría, dueño, modalidad (o precio) y estado.
 class TarjetaPublicacion extends StatelessWidget {
-  const TarjetaPublicacion({super.key, required this.publicacion});
+  const TarjetaPublicacion({super.key, required this.publicacion, this.onTap});
 
   static const double _ladoPortada = 96;
 
   final Publicacion publicacion;
+
+  /// Qué pasa al tocar la tarjeta (por ahora abre "En desarrollo").
+  final VoidCallback? onTap;
 
   String get _textoModalidad {
     final double? precio = publicacion.precio;
@@ -31,72 +34,78 @@ class TarjetaPublicacion extends StatelessWidget {
       publicacion.duenoNombre,
     ].whereType<String>().join(' · ');
 
-    return Container(
+    return Material(
       key: PublicacionKeys.tarjeta(publicacion.id),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColores.superficie,
+      color: AppColores.superficie,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppMedidas.radioTarjeta),
-        border: Border.all(color: AppColores.borde),
+        side: const BorderSide(color: AppColores.borde),
       ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppMedidas.radioCampo),
-            child: SizedBox(
-              width: _ladoPortada,
-              height: _ladoPortada,
-              child: _Portada(url: publicacion.portadaUrl),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  publicacion.titulo,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTexto.subtitulo(size: 15),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppMedidas.radioCampo),
+                child: SizedBox(
+                  width: _ladoPortada,
+                  height: _ladoPortada,
+                  child: _Portada(url: publicacion.portadaUrl),
                 ),
-                if (detalle.isNotEmpty) ...[
-                  const SizedBox(height: 2),
-                  Text(
-                    detalle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTexto.cuerpo(size: 12),
-                  ),
-                ],
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _Etiqueta(
-                      texto: _textoModalidad,
-                      fondo: AppColores.primario,
-                      color: AppColores.sobrePrimario,
+                    Text(
+                      publicacion.titulo,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTexto.subtitulo(size: 15),
                     ),
-                    if (publicacion.estado is! Disponible)
-                      _Etiqueta(
-                        texto: publicacion.estado.etiqueta,
-                        fondo: AppColores.errorSuave,
-                        color: AppColores.error,
-                      )
-                    else
-                      const _Etiqueta(
-                        texto: 'Disponible',
-                        fondo: AppColores.acentoSuave,
-                        color: AppColores.primario,
+                    if (detalle.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        detalle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTexto.cuerpo(size: 12),
                       ),
+                    ],
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        _Etiqueta(
+                          texto: _textoModalidad,
+                          fondo: AppColores.primario,
+                          color: AppColores.sobrePrimario,
+                        ),
+                        if (publicacion.estado is! Disponible)
+                          _Etiqueta(
+                            texto: publicacion.estado.etiqueta,
+                            fondo: AppColores.errorSuave,
+                            color: AppColores.error,
+                          )
+                        else
+                          const _Etiqueta(
+                            texto: 'Disponible',
+                            fondo: AppColores.acentoSuave,
+                            color: AppColores.primario,
+                          ),
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
