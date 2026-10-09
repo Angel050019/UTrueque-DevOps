@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/en_desarrollo_page.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../auth/domain/entities/usuario.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
@@ -227,7 +228,16 @@ class _PublicacionesRecientes extends StatelessWidget {
               separatorBuilder: (context, _) => const SizedBox(height: 10),
               itemBuilder: (context, i) {
                 final Publicacion publicacion = state.publicaciones[i];
-                return TarjetaPublicacion(publicacion: publicacion);
+                return TarjetaPublicacion(
+                  publicacion: publicacion,
+                  onTap: () => EnDesarrolloPage.abrir(
+                    context,
+                    titulo: 'Detalle de la publicación',
+                    mensaje: 'Muy pronto podrás ver todas las fotos de "${publicacion.titulo}", '
+                        'su descripción completa y contactar a quien lo publica.',
+                    sprint: 'Sprint 4',
+                  ),
+                );
               },
             ),
           );

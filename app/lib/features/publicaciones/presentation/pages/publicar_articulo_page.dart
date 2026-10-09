@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_constants.dart';
-import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/app_ui.dart';
@@ -17,6 +16,7 @@ import '../widgets/estado_carga_publicacion.dart';
 import '../widgets/selector_categoria.dart';
 import '../widgets/selector_fotos.dart';
 import '../widgets/selector_modalidad.dart';
+import 'publicacion_confirmada_page.dart';
 
 /// Pantalla "Publicar artículo" (HU-03, issue #4).
 /// Se abre desde el botón "Publicar" del Feed. Al publicar con éxito
@@ -63,8 +63,13 @@ class _PublicarArticuloPageState extends State<PublicarArticuloPage> {
 
   void _escuchar(BuildContext context, PublicacionState state) {
     if (state is PublicacionPublicada) {
-      mostrarMensaje(context, '¡Listo! Tu artículo ya está publicado.');
-      Navigator.of(context).pushNamedAndRemoveUntil(AppRoutes.feedPrincipal, (route) => false);
+      // Feed recargado + pantalla "Tu publicación está activa" encima.
+      PublicacionConfirmadaPage.mostrar(
+        context,
+        publicacion: state.publicacion,
+        portada: state.datos.fotos.isEmpty ? null : state.datos.fotos.first,
+        categoriaNombre: state.datos.categoria?.nombre,
+      );
     }
     if (state is PublicacionError && state.datos != null) {
       mostrarMensaje(context, state.mensaje, esError: true);
