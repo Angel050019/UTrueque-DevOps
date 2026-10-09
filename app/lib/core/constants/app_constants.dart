@@ -34,4 +34,25 @@ class AppConstants {
   /// Longitud permitida del nombre a mostrar (igual que en la base de datos).
   static const int nombreLongitudMinima = 3;
   static const int nombreLongitudMaxima = 50;
+
+  // ---------------------------------------------------------------------
+  // HU-03: Publicación de artículo (issue #4)
+  // ---------------------------------------------------------------------
+
+  /// Tablas de publicaciones y de su catálogo de categorías.
+  static const String tablaPublicaciones = 'publicaciones';
+  static const String tablaCategorias = 'categorias';
+
+  /// Bucket de Storage para las fotos de los artículos. Cada usuario solo
+  /// puede escribir en `publicaciones/<su id>/`.
+  static const String bucketPublicaciones = 'publicaciones';
+
+  /// Fotos por publicación (igual que en la base de datos).
+  static const int fotosPorPublicacionMaximo = 5;
+
+  /// Longitudes permitidas (iguales a las restricciones de la base).
+  static const int tituloLongitudMinima = 3;
+  static const int tituloLongitudMaxima = 80;
+  static const int descripcionLongitudMinima = 10;
+  static const int descripcionLongitudMaxima = 500;
 }
