@@ -16,4 +16,7 @@ class AppRoutes {
   static const String completarPerfil = '/perfil/completar';
   static const String miPerfil = '/perfil';
   static const String editarPerfil = '/perfil/editar';
+
+  // HU-03: Publicación de artículo
+  static const String publicarArticulo = '/publicar';
 }

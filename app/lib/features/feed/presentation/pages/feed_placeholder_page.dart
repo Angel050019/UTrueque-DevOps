@@ -8,6 +8,7 @@ import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../../perfil/domain/entities/perfil.dart';
 import '../../../perfil/domain/repositories/perfil_repository.dart';
 import '../../../perfil/presentation/widgets/avatar_perfil.dart';
+import '../../../publicaciones/presentation/publicacion_keys.dart';
 
 /// Placeholder temporal del Feed principal.
 /// El Feed real (HU-05) llega en un sprint posterior; por ahora muestra el
@@ -58,6 +59,15 @@ class _FeedPlaceholderPageState extends State<FeedPlaceholderPage> {
     final String nombre = _primerNombre(_perfil?.nombreMostrar, usuario);
 
     return Scaffold(
+      // HU-03: acceso a "Publicar artículo".
+      floatingActionButton: FloatingActionButton.extended(
+        key: PublicacionKeys.feedPublicarBoton,
+        onPressed: () => Navigator.of(context).pushNamed(AppRoutes.publicarArticulo),
+        backgroundColor: AppColores.primario,
+        foregroundColor: AppColores.sobrePrimario,
+        icon: const Icon(Icons.add_rounded, color: AppColores.acento),
+        label: Text('Publicar', style: AppTexto.subtitulo(size: 15, color: AppColores.sobrePrimario)),
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppMedidas.margen),
