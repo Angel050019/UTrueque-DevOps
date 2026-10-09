@@ -41,11 +41,11 @@ Se eligió HU-03 porque sin publicaciones no hay marketplace: el Feed, el filtra
 | Permiso de galería en iPhone (`ios/Runner/Info.plist`), en cuanto exista la carpeta `ios/` | Gonzalez Casarrubias Luis Angel | Develop Team |
 | Definir y validar los criterios de aceptación (Gherkin) de HU-03 | Diaz Huerta Diego Oziel | Product Owner |
 | Diseño de la pantalla "Publicar artículo" en Figma y ajustes visuales en la rama | Diaz Huerta Diego Oziel | Product Owner / Diseño |
-| Conseguir el catálogo oficial de Divisiones y Carreras de la UTSJR | Diaz Huerta Diego Oziel y Torres Valeriano Jesus | Product Owner |
+| Catálogo de Divisiones y Carreras de la UTSJR: investigación con fuentes públicas y migración (Jonathan); confirmar con Servicios Escolares a qué división pertenece cada carrera (Oziel y Jesus) | Cadena Vega Jonathan / Diaz Huerta Diego Oziel y Torres Valeriano Jesus | Develop Team / Product Owner |
 | Revisar y aprobar los Pull Requests hacia `develop` (mínimo 1 revisor, CI en verde) | Diaz Huerta Diego Oziel | Product Owner |
 | Validar manualmente los escenarios de HU-03 y los casos de error pendientes de HU-01 y HU-02 contra el build | Torres Valeriano Jesus | Product Owner / Validación |
 | Actividades de seguridad de la Unidad 2, Tema 1 (recolección de datos, auditoría de vulnerabilidades y matriz de seguridad), con el insumo `docs/Sprint3_Seguridad.md`; entrega el jueves 15 de octubre | Torres Valeriano Jesus | Product Owner / Validación |
-| Aplicar la migración de HU-03 en Supabase (y el catálogo oficial cuando llegue) | Orduña Garrido Jose Luis | Scrum Master |
+| Aplicar en Supabase la migración de HU-03 y la del catálogo de la UTSJR | Orduña Garrido Jose Luis | Scrum Master |
 | Configurar el tablero del Sprint 3, dar seguimiento en las Dailies y remover impedimentos | Orduña Garrido Jose Luis | Scrum Master |
 
 ## 5. Criterios de aceptación (Gherkin) - HU-03
@@ -164,7 +164,7 @@ Vulnerabilidades detectadas que quedan para sprints posteriores: validación del
 
 | Pendiente | Responsable | Rama / acción | Estado |
 | :--- | :--- | :--- | :--- |
-| Catálogo oficial de Divisiones y Carreras (hoy es *PROVISIONAL*) | Oziel y Jesus (conseguirlo), Jose Luis (aplicarlo en Supabase) | Sin cambios en la app; se actualizan las tablas `divisiones` y `carreras` | Pendiente |
+| Catálogo de Divisiones y Carreras (era *PROVISIONAL*) | Jonathan (migración), Jose Luis (aplicarla en Supabase), Oziel y Jesus (confirmar el acomodo con Servicios Escolares) | `supabase/migrations/20261009120000_catalogo_divisiones_carreras_utsjr.sql`: 5 divisiones y 26 carreras (12 TSU y 9 ingenierías/licenciaturas en San Juan del Río, más 5 en Jalpan) tomadas del informe SEAES 2024 y la cuenta pública 2025. Sin cambios en la app | Migración lista; falta confirmar el acomodo por división |
 | Permiso de galería en iPhone (`NSPhotoLibraryUsageDescription` en `ios/Runner/Info.plist`); ahora lo necesitan HU-02 y HU-03 | Gonzalez Casarrubias Luis Angel | `chore/plataformas-flutter` (falta la carpeta `ios/` en el repo) | Pendiente |
 | Validar manualmente los casos de error de HU-01 (correo no institucional, credenciales incorrectas, sin conexión) y de HU-02 (carrera fuera de la división, foto mayor a 5 MB, sin conexión) | Torres Valeriano Jesus | Checklist de validación | Pendiente |
 
