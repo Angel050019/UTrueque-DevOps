@@ -508,7 +508,8 @@ void main() {
       expect(peticion.url.path, _rutaPublicaciones);
       expect(peticion.url.queryParameters['select'], contains('usuarios(nombre_mostrar)'));
       expect(peticion.url.queryParameters['select'], contains('categorias(nombre)'));
-      expect(peticion.url.queryParameters['estado'], 'in.(disponible,reservado)');
+      // La librería de Supabase pone cada valor entre comillas.
+      expect(peticion.url.queryParameters['estado'], 'in.("disponible","reservado")');
       expect(peticion.url.queryParameters['order'], startsWith('created_at.desc'));
       expect(peticion.url.queryParameters['limit'], '20');
       expect(peticion.headers['Authorization'], 'Bearer $_tokenAcceso');
