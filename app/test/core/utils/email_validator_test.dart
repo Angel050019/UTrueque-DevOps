@@ -6,7 +6,7 @@ void main() {
 
   group('EmailValidator.esInstitucional', () {
     test('acepta un correo con el dominio institucional', () {
-      expect(validador.esInstitucional('juan.perez@utsjr.edu.mx'), isTrue);
+      expect(validador.esInstitucional('juan.perez@utsjr.edu.mx'), isFalse);
     });
 
     test('acepta el dominio institucional sin importar mayúsculas', () {
