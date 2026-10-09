@@ -5,8 +5,7 @@ on:
     branches: [ develop ]
   pull_request:
     branches: [ main, develop ]
-  # Permite lanzar el pipeline a mano (botón "Run workflow" en GitHub o el
-  # botón "Lanzar pipeline" del agente en tools/agente-pipeline/).
+  # Permite lanzar el pipeline a mano
   workflow_dispatch:
 
 # Si llega un push nuevo al mismo PR, se cancela la corrida anterior.
@@ -15,22 +14,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # El id "validate" es el nombre del check obligatorio en la protección de ramas.
   validate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     env:
-      # Solo se expone "true"/"false"; el token en sí solo llega al paso de SonarQube.
       TIENE_SONAR: ${{ secrets.SONAR_TOKEN != '' }}
-      # Plan Free de SonarQube Cloud: solo analiza la rama principal del proyecto
-      # y los PR que apuntan a ella. En SonarQube Cloud la rama principal se
-      # renombró a "develop" (ver docs/Plan_de_Pruebas.md, sección 3.3).
       SONAR_RAMA_PRINCIPAL: develop
+
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v5
         with:
-          # SonarQube necesita el historial completo para detectar "código nuevo"
-          fetch-depth: 0
+          fetch-depth: 0 # Necesario para SonarQube (historial completo)
 
       - name: Verify Repository Structure
         run: |
@@ -53,7 +50,6 @@ jobs:
       - name: Análisis estático (flutter analyze)
         working-directory: app
         run: |
-          # Si hay problemas, se publican como anotaciones en el PR (archivo y línea).
           if ! flutter analyze > analyze.txt 2>&1; then
             cat analyze.txt
             awk -F ' • ' '/^ *(info|warning|error) • /{ split($3, u, ":"); printf "::error file=app/%s,line=%s::%s (%s)\n", u[1], u[2], $2, $4 }' analyze.txt
@@ -61,7 +57,7 @@ jobs:
           fi
           cat analyze.txt
 
-      - name: Pruebas unitarias y del API REST (patrón AAA) con cobertura
+      - name: Pruebas unitarias y del API REST con cobertura
         working-directory: app
         run: flutter test --coverage --reporter expanded
 
@@ -82,7 +78,7 @@ jobs:
         run: |
           RAMA="${{ github.base_ref || github.ref_name }}"
           if [ "$TIENE_SONAR" != "true" ]; then
-            echo "::warning::Falta el secreto SONAR_TOKEN. Se omitió el análisis de SonarQube Cloud (ver docs/Plan_de_Pruebas.md, sección 3.3)."
+            echo "::warning::Falta el secreto SONAR_TOKEN. Se omitió el análisis de SonarQube Cloud."
             echo "correr=false" >> "$GITHUB_OUTPUT"
           elif [ "$RAMA" != "$SONAR_RAMA_PRINCIPAL" ]; then
             echo "::notice::SonarQube Cloud (plan Free) solo analiza '$SONAR_RAMA_PRINCIPAL' y los PR hacia ella. Se omite para '$RAMA'."
@@ -91,6 +87,9 @@ jobs:
             echo "correr=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # -------------------------------------------------------------
+      # 1. REQUERIMIENTO 1: Análisis e Integración con SonarQube Cloud
+      # -------------------------------------------------------------
       - name: Análisis SonarQube Cloud + Quality Gate
         if: steps.sonar.outputs.correr == 'true'
         uses: SonarSource/sonarqube-scan-action@v7
@@ -98,3 +97,38 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           projectBaseDir: app
+          args: >
+            -Dsonar.organization=${{ secrets.SONAR_ORGANIZATION }}
+            -Dsonar.projectKey=${{ secrets.SONAR_PROJECT_KEY }}
+            -Dsonar.dart.lcov.reportPaths=coverage/lcov.info
+
+      # -------------------------------------------------------------
+      # 2. REQUERIMIENTO 2: Notificación por Correo Electrónico al Fallar
+      # -------------------------------------------------------------
+      - name: Enviar correo de notificación tras fallo
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "🚨 [CI FAILURE] Falló el pipeline en ${{ github.repository }} (${{ github.ref_name }})"
+          to: ${{ secrets.MAIL_RECIPIENTS }}
+          from: "GitHub CI Bot <${{ secrets.MAIL_USERNAME }}>"
+          html_body: |
+            <h2>🚨 El pipeline de CI ha fallado en <strong>UTrueque</strong></h2>
+            <p>Se detectó un fallo durante la ejecución de las pruebas o análisis estático.</p>
+            <ul>
+              <li><strong>Repositorio:</strong> ${{ github.repository }}</li>
+              <li><strong>Rama / Ref:</strong> ${{ github.ref_name }}</li>
+              <li><strong>Autor:</strong> ${{ github.actor }}</li>
+              <li><strong>Commit:</strong> ${{ github.sha }}</li>
+            </ul>
+            <p>
+              <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" 
+                 style="background-color: #d9534f; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">
+                 Ver logs detallados en GitHub Actions
+              </a>
+            </p>
