@@ -20,8 +20,8 @@ UTrueque no tiene un servidor propio. Su **API REST es la que expone Supabase**:
 | Servicio de Supabase | Endpoints que usa la app | Para qué |
 | --- | --- | --- |
 | Auth (GoTrue) | `POST /auth/v1/signup`, `POST /auth/v1/token?grant_type=password`, `POST /auth/v1/logout` | Registro, inicio y cierre de sesión |
-| PostgREST | `GET/PATCH /rest/v1/usuarios`, `/rest/v1/divisiones`, `/rest/v1/carreras` | Perfil del alumno y catálogos |
-| Storage | `POST /storage/v1/object/...` | Fotos de perfil y de publicaciones |
+| PostgREST | `GET/PATCH /rest/v1/usuarios`, `/rest/v1/divisiones`, `/rest/v1/carreras`, `GET /rest/v1/categorias`, `POST /rest/v1/publicaciones` | Perfil del alumno, catálogos y publicaciones |
+| Storage | `POST` y `DELETE /storage/v1/object/...` | Fotos de perfil y de publicaciones |
 
 Por eso, "probar el API REST" significa comprobar que **la app envía las peticiones correctas y reacciona bien a cada respuesta** del servidor (200, 204, 400, 422, sin red).
 
@@ -35,7 +35,7 @@ Por eso, "probar el API REST" significa comprobar que **la app envía las petici
 | --- | --- | --- |
 | Autenticación institucional (`@utsjr.edu.mx`) | HU-01 | **Automatizado (7 casos AAA)** |
 | Perfil (división y carrera) | HU-02 | Planeado — Sprint 2 |
-| Publicaciones y catálogo | HU-03 / HU-04 | Planeado — Sprints 3-4 |
+| Publicaciones y catálogo | HU-03 / HU-04 | HU-03: **Automatizado (10 casos AAA, CP-08 a CP-17)** — Sprint 3; HU-04 planeado |
 | Trueques y chat | HU-05+ | Planeado — Sprints 5-7 |
 
 ### 1.2 Estrategia: cómo se prueba el API sin depender de internet
