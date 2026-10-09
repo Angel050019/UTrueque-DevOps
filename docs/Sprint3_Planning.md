@@ -38,6 +38,7 @@ Se eligió HU-03 porque sin publicaciones no hay marketplace: el Feed, el filtra
 | Estado y navegación: `PublicacionCubit`, ruta `/publicar` y botón "Publicar" en el Feed | Gonzalez Casarrubias Luis Angel | Develop Team |
 | Pantalla "Publicar artículo" con la paleta del logo y los widgets compartidos, usando Keys (`PublicacionKeys`) | Gonzalez Casarrubias Luis Angel | Develop Team |
 | Pruebas del `PublicacionCubit` (una por escenario Gherkin como mínimo) | Gonzalez Casarrubias Luis Angel | Develop Team |
+| Lista sencilla de "Publicaciones recientes" en el Feed para la demo (adelanto del Feed completo; sin búsqueda ni filtros) | Cadena Vega Jonathan | Develop Team |
 | Permiso de galería en iPhone (`ios/Runner/Info.plist`), en cuanto exista la carpeta `ios/` | Gonzalez Casarrubias Luis Angel | Develop Team |
 | Definir y validar los criterios de aceptación (Gherkin) de HU-03 | Diaz Huerta Diego Oziel | Product Owner |
 | Diseño de la pantalla "Publicar artículo" en Figma y ajustes visuales en la rama | Diaz Huerta Diego Oziel | Product Owner / Diseño |

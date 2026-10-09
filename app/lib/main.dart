@@ -34,6 +34,8 @@ import 'features/publicaciones/data/repositories/publicacion_repository_impl.dar
 import 'features/publicaciones/domain/repositories/publicacion_repository.dart';
 import 'features/publicaciones/domain/usecases/crear_publicacion.dart';
 import 'features/publicaciones/domain/usecases/obtener_categorias.dart';
+import 'features/publicaciones/domain/usecases/obtener_publicaciones_recientes.dart';
+import 'features/publicaciones/presentation/cubit/publicaciones_recientes_cubit.dart';
 import 'features/publicaciones/presentation/cubit/publicacion_cubit.dart';
 import 'features/publicaciones/presentation/pages/publicar_articulo_page.dart';
 
@@ -101,7 +103,12 @@ class UTruequeApp extends StatelessWidget {
             AppRoutes.login: (_) => const LoginPage(),
             AppRoutes.registro: (_) => const RegistroPage(),
             AppRoutes.confirmacionRegistro: (_) => const ConfirmacionRegistroPage(),
-            AppRoutes.feedPrincipal: (_) => const FeedPlaceholderPage(),
+            AppRoutes.feedPrincipal: (_) => BlocProvider(
+                  create: (_) => PublicacionesRecientesCubit(
+                    ObtenerPublicacionesRecientes(publicacionRepository, networkInfo),
+                  )..cargar(),
+                  child: const FeedPlaceholderPage(),
+                ),
             // HU-02: Perfil Académico
             AppRoutes.completarPerfil: (_) => BlocProvider(
                   create: (_) => crearPerfilCubit()..cargarMiPerfil(),

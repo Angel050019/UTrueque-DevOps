@@ -7,6 +7,10 @@ import '../entities/publicacion.dart';
 /// solo conocen esta interfaz, nunca a Supabase.
 /// Todos los métodos lanzan un `Failure` si algo sale mal.
 abstract class PublicacionRepository {
+  /// Publicaciones Disponibles o Reservadas, de la más nueva a la más
+  /// vieja, con su portada, dueño y categoría (para el Feed).
+  Future<List<Publicacion>> obtenerPublicacionesRecientes({int limite = 20});
+
   /// Categorías activas, en el orden en que se muestran.
   Future<List<Categoria>> obtenerCategorias();
 

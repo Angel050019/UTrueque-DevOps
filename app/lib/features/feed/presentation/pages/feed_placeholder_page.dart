@@ -3,17 +3,22 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/widgets/primary_button.dart';
 import '../../../auth/domain/entities/usuario.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../../perfil/domain/entities/perfil.dart';
 import '../../../perfil/domain/repositories/perfil_repository.dart';
 import '../../../perfil/presentation/widgets/avatar_perfil.dart';
+import '../../../publicaciones/domain/entities/publicacion.dart';
+import '../../../publicaciones/presentation/cubit/publicaciones_recientes_cubit.dart';
 import '../../../publicaciones/presentation/publicacion_keys.dart';
+import '../../../publicaciones/presentation/widgets/tarjeta_publicacion.dart';
 
 /// Placeholder temporal del Feed principal.
 /// El Feed real (HU-05) llega en un sprint posterior; por ahora muestra el
-/// saludo, el buscador y los filtros (sin funcionalidad) y da acceso a
-/// "Mi perfil" desde el avatar.
+/// saludo, el buscador y los filtros (sin funcionalidad), da acceso a
+/// "Mi perfil" desde el avatar y, desde HU-03, la lista sencilla de
+/// "Publicaciones recientes" ([PublicacionesRecientesCubit]).
 class FeedPlaceholderPage extends StatefulWidget {
   const FeedPlaceholderPage({super.key});
 
@@ -130,44 +135,10 @@ class _FeedPlaceholderPageState extends State<FeedPlaceholderPage> {
                   ],
                 ),
               ),
-              Expanded(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: const BoxDecoration(
-                            color: AppColores.primarioSuave,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.swap_horiz_rounded,
-                            size: 56,
-                            color: AppColores.primario,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Aquí verás las publicaciones',
-                          textAlign: TextAlign.center,
-                          style: AppTexto.subtitulo(size: 18),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Muy pronto podrás comprar, vender e intercambiar con estudiantes '
-                          'de tu división y carrera.',
-                          textAlign: TextAlign.center,
-                          style: AppTexto.cuerpo(size: 14),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              const SizedBox(height: 16),
+              Text('Publicaciones recientes', style: AppTexto.subtitulo(size: 17)),
+              const SizedBox(height: 10),
+              const Expanded(child: _PublicacionesRecientes()),
             ],
           ),
         ),
@@ -210,6 +181,104 @@ class _Filtro extends StatelessWidget {
           color: activo ? AppColores.sobrePrimario : AppColores.texto,
         ),
       ),
+    );
+  }
+}
+
+/// Lista de publicaciones recientes con sus estados de carga, vacío y error.
+class _PublicacionesRecientes extends StatelessWidget {
+  const _PublicacionesRecientes();
+
+  @override
+  Widget build(BuildContext context) {
+    final PublicacionesRecientesCubit cubit = context.read<PublicacionesRecientesCubit>();
+    return BlocBuilder<PublicacionesRecientesCubit, RecientesState>(
+      builder: (context, state) {
+        if (state is RecientesError) {
+          return _Aviso(
+            key: PublicacionKeys.feedError,
+            icono: Icons.cloud_off_rounded,
+            titulo: 'No pudimos cargar las publicaciones',
+            texto: state.mensaje,
+            accion: PrimaryButton(
+              key: PublicacionKeys.feedReintentarBoton,
+              texto: 'Reintentar',
+              onPressed: cubit.cargar,
+            ),
+          );
+        }
+        if (state is RecientesCargadas) {
+          if (state.publicaciones.isEmpty) {
+            return const _Aviso(
+              key: PublicacionKeys.feedVacio,
+              icono: Icons.swap_horiz_rounded,
+              titulo: 'Aún no hay publicaciones',
+              texto: 'Toca "Publicar" para ofrecer el primer artículo a tus compañeros.',
+            );
+          }
+          return RefreshIndicator(
+            color: AppColores.primario,
+            onRefresh: cubit.cargar,
+            child: ListView.separated(
+              key: PublicacionKeys.feedLista,
+              // Espacio abajo para que el botón "Publicar" no tape la última.
+              padding: const EdgeInsets.only(bottom: 88),
+              itemCount: state.publicaciones.length,
+              separatorBuilder: (context, _) => const SizedBox(height: 10),
+              itemBuilder: (context, i) {
+                final Publicacion publicacion = state.publicaciones[i];
+                return TarjetaPublicacion(publicacion: publicacion);
+              },
+            ),
+          );
+        }
+        return const Center(
+          child: CircularProgressIndicator(
+            key: PublicacionKeys.feedCargando,
+            color: AppColores.primario,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _Aviso extends StatelessWidget {
+  const _Aviso({
+    super.key,
+    required this.icono,
+    required this.titulo,
+    required this.texto,
+    this.accion,
+  });
+
+  final IconData icono;
+  final String titulo;
+  final String texto;
+  final Widget? accion;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 24, 16, 88),
+      children: [
+        Center(
+          child: Container(
+            width: 112,
+            height: 112,
+            decoration: const BoxDecoration(
+              color: AppColores.primarioSuave,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icono, size: 52, color: AppColores.primario),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(titulo, textAlign: TextAlign.center, style: AppTexto.subtitulo(size: 18)),
+        const SizedBox(height: 8),
+        Text(texto, textAlign: TextAlign.center, style: AppTexto.cuerpo(size: 14)),
+        if (accion != null) ...[const SizedBox(height: 20), accion!],
+      ],
     );
   }
 }

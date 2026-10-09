@@ -12,6 +12,10 @@ class PublicacionRepositoryImpl implements PublicacionRepository {
   final PublicacionRemoteDataSource _remoteDataSource;
 
   @override
+  Future<List<Publicacion>> obtenerPublicacionesRecientes({int limite = 20}) =>
+      _remoteDataSource.obtenerPublicacionesRecientes(limite: limite);
+
+  @override
   Future<List<Categoria>> obtenerCategorias() => _remoteDataSource.obtenerCategorias();
 
   @override

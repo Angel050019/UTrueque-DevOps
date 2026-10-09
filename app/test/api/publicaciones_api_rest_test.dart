@@ -29,6 +29,7 @@ import 'package:utrueque/features/publicaciones/domain/entities/publicacion.dart
 import 'package:utrueque/features/publicaciones/domain/errors/publicacion_failures.dart';
 import 'package:utrueque/features/publicaciones/domain/usecases/crear_publicacion.dart';
 import 'package:utrueque/features/publicaciones/domain/usecases/obtener_categorias.dart';
+import 'package:utrueque/features/publicaciones/domain/usecases/obtener_publicaciones_recientes.dart';
 
 import '../features/publicaciones/fixtures.dart';
 
@@ -460,6 +461,75 @@ void main() {
       );
       await expectLater(repositorio.eliminarFotos(const [rutaFoto1]), throwsA(isA<ServidorFailure>()));
       await repositorio.eliminarFotos(const []);
+    });
+
+    test(
+        'CP-18 (Feed): GET /rest/v1/publicaciones responde 200 con las recientes, '
+        'su dueño, su categoría y la URL pública de la portada', () async {
+      // ARRANGE
+      api.cuando(
+        'GET',
+        _rutaPublicaciones,
+        (_) => _json(200, <Map<String, dynamic>>[
+          <String, dynamic>{
+            'id': 'pub-1',
+            'usuario_id': idAlumno,
+            'titulo': tituloValido,
+            'descripcion': descripcionValida,
+            'categoria_id': 2,
+            'modalidad': 'venta',
+            'precio': 150,
+            'estado': 'disponible',
+            'fotos': <String>[rutaFoto1],
+            'created_at': '2026-10-09T19:21:07Z',
+            'usuarios': <String, dynamic>{'nombre_mostrar': 'Ana López'},
+            'categorias': <String, dynamic>{'nombre': 'Calculadoras'},
+          },
+        ]),
+      );
+
+      // ACT
+      final List<Publicacion> recientes =
+          await ObtenerPublicacionesRecientes(repositorio, _RedSimulada(conectado: true))();
+
+      // ASSERT: respuesta interpretada
+      final Publicacion publicacion = recientes.single;
+      expect(publicacion.precio, 150);
+      expect(publicacion.duenoNombre, 'Ana López');
+      expect(publicacion.categoriaNombre, 'Calculadoras');
+      expect(
+        publicacion.portadaUrl,
+        '$_urlSupabase/storage/v1/object/public/publicaciones/$rutaFoto1',
+      );
+
+      // ASSERT: petición enviada
+      final http.Request peticion = api.peticionesDeLaApp.single;
+      expect(peticion.method, 'GET');
+      expect(peticion.url.path, _rutaPublicaciones);
+      expect(peticion.url.queryParameters['select'], contains('usuarios(nombre_mostrar)'));
+      expect(peticion.url.queryParameters['select'], contains('categorias(nombre)'));
+      expect(peticion.url.queryParameters['estado'], 'in.(disponible,reservado)');
+      expect(peticion.url.queryParameters['order'], startsWith('created_at.desc'));
+      expect(peticion.url.queryParameters['limit'], '20');
+      expect(peticion.headers['Authorization'], 'Bearer $_tokenAcceso');
+    });
+
+    test('CP-19 (Feed): si el API responde 500, la app muestra un mensaje genérico', () async {
+      // ARRANGE
+      api.cuando('GET', _rutaPublicaciones, (_) => _json(500, <String, dynamic>{
+            'code': 'XX000',
+            'message': 'internal error at 10.0.0.8',
+          }));
+
+      // ACT + ASSERT
+      await expectLater(
+        repositorio.obtenerPublicacionesRecientes(),
+        throwsA(isA<ServidorFailure>().having(
+          (f) => f.mensaje,
+          'mensaje',
+          isNot(contains('10.0.0.8')),
+        )),
+      );
     });
   });
 }

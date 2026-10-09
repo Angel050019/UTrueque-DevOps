@@ -28,4 +28,14 @@ class PublicacionKeys {
 
   /// Botón flotante "Publicar" del Feed.
   static const Key feedPublicarBoton = Key('feed_publicar_boton');
+
+  /// Lista "Publicaciones recientes" del Feed y sus estados.
+  static const Key feedLista = Key('feed_publicaciones_lista');
+  static const Key feedVacio = Key('feed_publicaciones_vacio');
+  static const Key feedCargando = Key('feed_publicaciones_cargando');
+  static const Key feedError = Key('feed_publicaciones_error');
+  static const Key feedReintentarBoton = Key('feed_publicaciones_reintentar');
+
+  /// Tarjeta de la publicación con ese id.
+  static Key tarjeta(String id) => Key('feed_publicacion_$id');
 }

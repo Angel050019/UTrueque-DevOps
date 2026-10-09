@@ -27,7 +27,7 @@ Piezas en `presentation/widgets/`:
 | `CargandoPublicacion` / `ErrorCargaPublicacion` | Carga del catálogo y error con botón "Reintentar". |
 | `elegirFotosArticulo()` | Abre la galería. No la cambies; solo llámala. |
 
-El botón "Publicar" del Feed está en `features/feed/presentation/pages/feed_placeholder_page.dart`.
+El botón "Publicar" del Feed y la lista "Publicaciones recientes" están en `features/feed/presentation/pages/feed_placeholder_page.dart`. Cada artículo de la lista se dibuja con `presentation/widgets/tarjeta_publicacion.dart` (portada, título, categoría · dueño, modalidad o precio y estado); también puedes ajustar su diseño, conservando `PublicacionKeys.tarjeta(id)` y las Keys `feedLista`, `feedVacio`, `feedCargando`, `feedError` y `feedReintentarBoton`.
 
 ---
 

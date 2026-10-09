@@ -16,14 +16,30 @@ class PublicacionModel extends Publicacion {
     required super.fotos,
     super.precio,
     super.creadaEn,
+    super.portadaUrl,
+    super.duenoNombre,
+    super.categoriaNombre,
   });
 
   /// Columnas que se piden a Supabase.
   static const String columnasSelect = 'id, usuario_id, titulo, descripcion, categoria_id, '
       'modalidad, precio, estado, fotos, created_at';
 
-  factory PublicacionModel.fromMap(Map<String, dynamic> mapa) {
+  /// Columnas para el Feed: además trae el nombre del dueño y de la
+  /// categoría (PostgREST las une por sus llaves foráneas).
+  static const String columnasFeed =
+      '$columnasSelect, usuarios(nombre_mostrar), categorias(nombre)';
+
+  /// [urlFoto] convierte la ruta de la portada en su URL pública; si no se
+  /// pasa, `portadaUrl` queda en `null`.
+  factory PublicacionModel.fromMap(
+    Map<String, dynamic> mapa, {
+    String Function(String ruta)? urlFoto,
+  }) {
     final String? creada = mapa['created_at'] as String?;
+    final List<String> fotos = ((mapa['fotos'] as List<dynamic>?) ?? const <dynamic>[])
+        .cast<String>()
+        .toList(growable: false);
     return PublicacionModel(
       id: mapa['id'] as String,
       usuarioId: mapa['usuario_id'] as String,
@@ -34,10 +50,11 @@ class PublicacionModel extends Publicacion {
       // numeric llega como número; por si acaso también se acepta texto.
       precio: _leerNumero(mapa['precio']),
       estado: EstadoPublicacion.desdeValor(mapa['estado'] as String),
-      fotos: ((mapa['fotos'] as List<dynamic>?) ?? const <dynamic>[])
-          .cast<String>()
-          .toList(growable: false),
+      fotos: fotos,
       creadaEn: creada == null ? null : DateTime.parse(creada),
+      portadaUrl: urlFoto == null || fotos.isEmpty ? null : urlFoto(fotos.first),
+      duenoNombre: _textoAnidado(mapa['usuarios'], 'nombre_mostrar'),
+      categoriaNombre: _textoAnidado(mapa['categorias'], 'nombre'),
     );
   }
 
@@ -61,6 +78,12 @@ class PublicacionModel extends Publicacion {
       'precio': modalidad.requierePrecio ? precio : null,
       'fotos': fotos,
     };
+  }
+
+  /// Lee `{campo: valor}` de una tabla unida; `null` si no vino.
+  static String? _textoAnidado(Object? anidado, String campo) {
+    if (anidado is Map<String, dynamic>) return anidado[campo] as String?;
+    return null;
   }
 
   static double? _leerNumero(Object? valor) {

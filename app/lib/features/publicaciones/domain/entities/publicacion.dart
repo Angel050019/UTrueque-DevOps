@@ -16,6 +16,9 @@ class Publicacion extends Equatable {
     required this.fotos,
     this.precio,
     this.creadaEn,
+    this.portadaUrl,
+    this.duenoNombre,
+    this.categoriaNombre,
   });
 
   final String id;
@@ -36,7 +39,32 @@ class Publicacion extends Equatable {
   final List<String> fotos;
   final DateTime? creadaEn;
 
+  /// Datos extra para mostrar la publicación en el Feed. Solo vienen
+  /// cuando se consultan publicaciones (no al crear una).
+  ///
+  /// URL pública de la primera foto.
+  final String? portadaUrl;
+
+  /// Nombre a mostrar del dueño.
+  final String? duenoNombre;
+
+  /// Nombre de la categoría.
+  final String? categoriaNombre;
+
   @override
-  List<Object?> get props =>
-      [id, usuarioId, titulo, descripcion, categoriaId, modalidad, precio, estado, fotos, creadaEn];
+  List<Object?> get props => [
+        id,
+        usuarioId,
+        titulo,
+        descripcion,
+        categoriaId,
+        modalidad,
+        precio,
+        estado,
+        fotos,
+        creadaEn,
+        portadaUrl,
+        duenoNombre,
+        categoriaNombre,
+      ];
 }

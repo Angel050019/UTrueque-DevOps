@@ -90,6 +90,54 @@ void main() {
     });
   });
 
+  group('PublicacionModel para el Feed', () {
+    test('lee el dueño y la categoría unidos y arma la URL de la portada', () {
+      final PublicacionModel modelo = PublicacionModel.fromMap(
+        const <String, dynamic>{
+          'id': 'pub-3',
+          'usuario_id': idAlumno,
+          'titulo': tituloValido,
+          'descripcion': descripcionValida,
+          'categoria_id': 2,
+          'modalidad': 'intercambio',
+          'precio': null,
+          'estado': 'disponible',
+          'fotos': <dynamic>[rutaFoto1, rutaFoto2],
+          'usuarios': <String, dynamic>{'nombre_mostrar': 'Ana López'},
+          'categorias': <String, dynamic>{'nombre': 'Calculadoras'},
+        },
+        urlFoto: (ruta) => 'https://fotos/$ruta',
+      );
+
+      expect(modelo.portadaUrl, 'https://fotos/$rutaFoto1');
+      expect(modelo.duenoNombre, 'Ana López');
+      expect(modelo.categoriaNombre, 'Calculadoras');
+    });
+
+    test('sin fotos, sin urlFoto o sin tablas unidas deja esos datos en null', () {
+      const Map<String, dynamic> fila = <String, dynamic>{
+        'id': 'pub-4',
+        'usuario_id': idAlumno,
+        'titulo': tituloValido,
+        'descripcion': descripcionValida,
+        'categoria_id': 2,
+        'modalidad': 'gratis',
+        'estado': 'disponible',
+        'fotos': <dynamic>[rutaFoto1],
+        'usuarios': null,
+      };
+
+      final PublicacionModel sinUrl = PublicacionModel.fromMap(fila);
+      final PublicacionModel sinFotos =
+          PublicacionModel.fromMap(const {...fila, 'fotos': <dynamic>[]}, urlFoto: (r) => r);
+
+      expect(sinUrl.portadaUrl, isNull);
+      expect(sinUrl.duenoNombre, isNull);
+      expect(sinUrl.categoriaNombre, isNull);
+      expect(sinFotos.portadaUrl, isNull);
+    });
+  });
+
   group('CategoriaModel', () {
     test('fromMap convierte una fila del catálogo', () {
       final CategoriaModel modelo =

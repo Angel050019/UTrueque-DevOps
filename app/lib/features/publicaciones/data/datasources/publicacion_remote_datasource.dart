@@ -12,6 +12,7 @@ import '../models/publicacion_model.dart';
 /// feature que importa `supabase_flutter`; traduce sus excepciones a
 /// [Failure]s con mensajes en español que no revelan detalles internos.
 abstract class PublicacionRemoteDataSource {
+  Future<List<PublicacionModel>> obtenerPublicacionesRecientes({required int limite});
   Future<List<CategoriaModel>> obtenerCategorias();
   Future<String> subirFoto(FotoArticulo foto);
   Future<void> eliminarFotos(List<String> rutas);
@@ -42,6 +43,24 @@ class PublicacionRemoteDataSourceImpl implements PublicacionRemoteDataSource {
   }
 
   StorageFileApi get _bucket => _client.storage.from(AppConstants.bucketPublicaciones);
+
+  @override
+  Future<List<PublicacionModel>> obtenerPublicacionesRecientes({required int limite}) async {
+    try {
+      final List<Map<String, dynamic>> filas = await _client
+          .from(AppConstants.tablaPublicaciones)
+          .select(PublicacionModel.columnasFeed)
+          // Las vendidas ya no se muestran en el Feed.
+          .inFilter('estado', const ['disponible', 'reservado'])
+          .order('created_at', ascending: false)
+          .limit(limite);
+      return filas
+          .map((fila) => PublicacionModel.fromMap(fila, urlFoto: _bucket.getPublicUrl))
+          .toList(growable: false);
+    } on PostgrestException catch (e) {
+      throw _traducir(e);
+    }
+  }
 
   @override
   Future<List<CategoriaModel>> obtenerCategorias() async {
