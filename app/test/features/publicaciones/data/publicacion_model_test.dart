@@ -128,8 +128,10 @@ void main() {
       };
 
       final PublicacionModel sinUrl = PublicacionModel.fromMap(fila);
-      final PublicacionModel sinFotos =
-          PublicacionModel.fromMap(const {...fila, 'fotos': <dynamic>[]}, urlFoto: (r) => r);
+      // Copia de la fila con la lista de fotos vacía.
+      final Map<String, dynamic> filaSinFotos = Map<String, dynamic>.of(fila)
+        ..['fotos'] = <dynamic>[];
+      final PublicacionModel sinFotos = PublicacionModel.fromMap(filaSinFotos, urlFoto: (r) => r);
 
       expect(sinUrl.portadaUrl, isNull);
       expect(sinUrl.duenoNombre, isNull);
