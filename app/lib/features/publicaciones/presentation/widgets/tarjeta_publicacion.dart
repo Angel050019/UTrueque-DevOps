@@ -16,7 +16,7 @@ class TarjetaPublicacion extends StatelessWidget {
 
   final Publicacion publicacion;
 
-  /// Qué pasa al tocar la tarjeta (por ahora abre "En desarrollo").
+  /// Qué pasa al tocar la tarjeta (HU-04: abre el Detalle).
   final VoidCallback? onTap;
 
   String get _textoModalidad {

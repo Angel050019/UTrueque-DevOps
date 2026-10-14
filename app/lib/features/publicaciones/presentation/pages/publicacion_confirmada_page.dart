@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/formato_precio.dart';
-import '../../../../core/widgets/en_desarrollo_page.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../domain/entities/foto_articulo.dart';
 import '../../domain/entities/modalidad.dart';
 import '../../domain/entities/publicacion.dart';
 import '../publicacion_keys.dart';
+import 'detalle_publicacion_page.dart';
 
 /// Confirmación de publicación (diseño de Figma "Confirmación Publicación").
 /// Aparece después de que la API responde 201 Created: muestra la tarjeta
@@ -49,14 +49,9 @@ class PublicacionConfirmadaPage extends StatelessWidget {
     ));
   }
 
+  /// HU-04: abre el Detalle de la publicación recién creada.
   void _verPublicacion(BuildContext context) {
-    EnDesarrolloPage.abrir(
-      context,
-      titulo: 'Detalle de la publicación',
-      mensaje: 'Muy pronto podrás ver todas las fotos, la descripción completa '
-          'y los datos de quien publica.',
-      sprint: 'Sprint 4',
-    );
+    DetallePublicacionPage.abrir(context, id: publicacion.id);
   }
 
   @override

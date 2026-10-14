@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
-import '../../../../core/widgets/en_desarrollo_page.dart';
+import '../../../../core/widgets/app_ui.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../auth/domain/entities/usuario.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
@@ -11,23 +11,30 @@ import '../../../perfil/domain/entities/perfil.dart';
 import '../../../perfil/domain/repositories/perfil_repository.dart';
 import '../../../perfil/presentation/widgets/avatar_perfil.dart';
 import '../../../publicaciones/domain/entities/publicacion.dart';
-import '../../../publicaciones/presentation/cubit/publicaciones_recientes_cubit.dart';
-import '../../../publicaciones/presentation/publicacion_keys.dart';
+import '../../../publicaciones/presentation/pages/detalle_publicacion_page.dart';
 import '../../../publicaciones/presentation/widgets/tarjeta_publicacion.dart';
+import '../cubit/feed_cubit.dart';
+import '../cubit/feed_state.dart';
+import '../feed_keys.dart';
 
-/// Placeholder temporal del Feed principal.
-/// El Feed real (HU-05) llega en un sprint posterior; por ahora muestra el
-/// saludo, el buscador y los filtros (sin funcionalidad), da acceso a
-/// "Mi perfil" desde el avatar y, desde HU-03, la lista sencilla de
-/// "Publicaciones recientes" ([PublicacionesRecientesCubit]).
-class FeedPlaceholderPage extends StatefulWidget {
-  const FeedPlaceholderPage({super.key});
+/// Feed principal (HU-04).
+///
+/// Arriba: saludo, acceso a "Mi perfil", buscador y filtros (estos dos
+/// todavía sin funcionar: llegan en el Sprint 5, HU-05). Abajo: la lista
+/// de publicaciones con scroll infinito, "jalar para actualizar" y sus
+/// estados de carga, vacío, error y sin conexión. Al tocar una tarjeta se
+/// abre su detalle.
+///
+/// Solo dibuja el estado del [FeedCubit]; la lógica vive en el Cubit y en
+/// los casos de uso.
+class FeedPage extends StatefulWidget {
+  const FeedPage({super.key});
 
   @override
-  State<FeedPlaceholderPage> createState() => _FeedPlaceholderPageState();
+  State<FeedPage> createState() => _FeedPageState();
 }
 
-class _FeedPlaceholderPageState extends State<FeedPlaceholderPage> {
+class _FeedPageState extends State<FeedPage> {
   static const List<String> _filtros = ['Todo', 'Libros', 'Calculadoras', 'Batas'];
 
   /// Perfil del estudiante (nombre y foto). Mientras carga es null.
@@ -65,9 +72,8 @@ class _FeedPlaceholderPageState extends State<FeedPlaceholderPage> {
     final String nombre = _primerNombre(_perfil?.nombreMostrar, usuario);
 
     return Scaffold(
-      // HU-03: acceso a "Publicar artículo".
       floatingActionButton: FloatingActionButton.extended(
-        key: PublicacionKeys.feedPublicarBoton,
+        key: FeedKeys.publicarBoton,
         onPressed: () => Navigator.of(context).pushNamed(AppRoutes.publicarArticulo),
         backgroundColor: AppColores.primario,
         foregroundColor: AppColores.sobrePrimario,
@@ -95,7 +101,7 @@ class _FeedPlaceholderPageState extends State<FeedPlaceholderPage> {
                   Tooltip(
                     message: 'Mi perfil',
                     child: InkWell(
-                      key: const Key('feed_mi_perfil_boton'),
+                      key: FeedKeys.miPerfilBoton,
                       customBorder: const CircleBorder(),
                       onTap: _irAMiPerfil,
                       child: AvatarPerfil(
@@ -108,6 +114,7 @@ class _FeedPlaceholderPageState extends State<FeedPlaceholderPage> {
                 ],
               ),
               const SizedBox(height: 20),
+              // TODO(diseño): buscador. Funciona hasta el Sprint 5 (HU-05).
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
@@ -124,6 +131,7 @@ class _FeedPlaceholderPageState extends State<FeedPlaceholderPage> {
                 ),
               ),
               const SizedBox(height: 14),
+              // TODO(diseño): filtros. Funcionan hasta el Sprint 5 (HU-05).
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -139,7 +147,7 @@ class _FeedPlaceholderPageState extends State<FeedPlaceholderPage> {
               const SizedBox(height: 16),
               Text('Publicaciones recientes', style: AppTexto.subtitulo(size: 17)),
               const SizedBox(height: 10),
-              const Expanded(child: _PublicacionesRecientes()),
+              const Expanded(child: _ListaFeed()),
             ],
           ),
         ),
@@ -186,69 +194,160 @@ class _Filtro extends StatelessWidget {
   }
 }
 
-/// Lista de publicaciones recientes con sus estados de carga, vacío y error.
-class _PublicacionesRecientes extends StatelessWidget {
-  const _PublicacionesRecientes();
+/// Lista del Feed con sus estados (HU-04, Escenarios 1 a 6).
+class _ListaFeed extends StatelessWidget {
+  const _ListaFeed();
+
+  /// Cuando quedan menos de estos píxeles por recorrer se pide la
+  /// siguiente página, así el estudiante casi nunca ve el spinner.
+  static const double _distanciaParaCargarMas = 400;
+
+  void _abrirDetalle(BuildContext context, Publicacion publicacion) {
+    DetallePublicacionPage.abrir(
+      context,
+      id: publicacion.id,
+      // Si al verla resulta que se vendió o se borró, se quita del Feed.
+      alCambiar: context.read<FeedCubit>().sincronizar,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final PublicacionesRecientesCubit cubit = context.read<PublicacionesRecientesCubit>();
-    return BlocBuilder<PublicacionesRecientesCubit, RecientesState>(
+    final FeedCubit cubit = context.read<FeedCubit>();
+    return BlocConsumer<FeedCubit, FeedState>(
+      listenWhen: (anterior, actual) =>
+          actual is FeedCargado &&
+          actual.aviso != null &&
+          (anterior is! FeedCargado || anterior.aviso != actual.aviso),
+      listener: (context, state) {
+        final String? aviso = state is FeedCargado ? state.aviso : null;
+        if (aviso == null) return;
+        mostrarMensaje(context, aviso, esError: true);
+        cubit.avisoMostrado();
+      },
       builder: (context, state) {
-        if (state is RecientesError) {
+        if (state is FeedError) {
           return _Aviso(
-            key: PublicacionKeys.feedError,
-            icono: Icons.cloud_off_rounded,
-            titulo: 'No pudimos cargar las publicaciones',
+            key: FeedKeys.error,
+            icono: state.sinConexion ? Icons.wifi_off_rounded : Icons.cloud_off_rounded,
+            titulo: state.sinConexion ? 'Sin conexión' : 'Algo salió mal',
             texto: state.mensaje,
             accion: PrimaryButton(
-              key: PublicacionKeys.feedReintentarBoton,
+              key: FeedKeys.reintentarBoton,
               texto: 'Reintentar',
               onPressed: cubit.cargar,
             ),
           );
         }
-        if (state is RecientesCargadas) {
-          if (state.publicaciones.isEmpty) {
-            return const _Aviso(
-              key: PublicacionKeys.feedVacio,
-              icono: Icons.swap_horiz_rounded,
-              titulo: 'Aún no hay publicaciones',
-              texto: 'Toca "Publicar" para ofrecer el primer artículo a tus compañeros.',
-            );
-          }
+        if (state is FeedVacio) {
+          // TODO(diseño): ilustración del Feed vacío.
           return RefreshIndicator(
             color: AppColores.primario,
-            onRefresh: cubit.cargar,
-            child: ListView.separated(
-              key: PublicacionKeys.feedLista,
-              // Espacio abajo para que el botón "Publicar" no tape la última.
-              padding: const EdgeInsets.only(bottom: 88),
-              itemCount: state.publicaciones.length,
-              separatorBuilder: (context, _) => const SizedBox(height: 10),
-              itemBuilder: (context, i) {
-                final Publicacion publicacion = state.publicaciones[i];
-                return TarjetaPublicacion(
-                  publicacion: publicacion,
-                  onTap: () => EnDesarrolloPage.abrir(
-                    context,
-                    titulo: 'Detalle de la publicación',
-                    mensaje: 'Muy pronto podrás ver todas las fotos de "${publicacion.titulo}", '
-                        'su descripción completa y contactar a quien lo publica.',
-                    sprint: 'Sprint 4',
-                  ),
-                );
+            onRefresh: cubit.actualizar,
+            child: const _Aviso(
+              key: FeedKeys.vacio,
+              icono: Icons.swap_horiz_rounded,
+              titulo: 'Aún no hay publicaciones',
+              texto: '¡Sé el primero en publicar!',
+            ),
+          );
+        }
+        if (state is FeedCargado) {
+          return RefreshIndicator(
+            color: AppColores.primario,
+            onRefresh: cubit.actualizar,
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (notificacion) {
+                if (notificacion.metrics.extentAfter < _distanciaParaCargarMas) {
+                  cubit.cargarMas();
+                }
+                return false;
               },
+              child: ListView.separated(
+                key: FeedKeys.lista,
+                physics: const AlwaysScrollableScrollPhysics(),
+                // Espacio abajo para que el botón "Publicar" no tape la última.
+                padding: const EdgeInsets.only(bottom: 88),
+                // Una fila extra al final: cargando más, error o fin de la lista.
+                itemCount: state.publicaciones.length + 1,
+                separatorBuilder: (context, _) => const SizedBox(height: 10),
+                itemBuilder: (context, i) {
+                  if (i == state.publicaciones.length) {
+                    return _FinDeLista(state: state, onReintentar: cubit.cargarMas);
+                  }
+                  final Publicacion publicacion = state.publicaciones[i];
+                  return TarjetaPublicacion(
+                    publicacion: publicacion,
+                    onTap: () => _abrirDetalle(context, publicacion),
+                  );
+                },
+              ),
             ),
           );
         }
         return const Center(
           child: CircularProgressIndicator(
-            key: PublicacionKeys.feedCargando,
+            key: FeedKeys.cargando,
             color: AppColores.primario,
           ),
         );
       },
+    );
+  }
+}
+
+/// Última fila de la lista: spinner mientras carga la siguiente página,
+/// error con botón para reintentar o "Ya viste todas las publicaciones."
+class _FinDeLista extends StatelessWidget {
+  const _FinDeLista({required this.state, required this.onReintentar});
+
+  final FeedCargado state;
+  final VoidCallback onReintentar;
+
+  @override
+  Widget build(BuildContext context) {
+    final String? error = state.errorMas;
+    if (error != null) {
+      return Padding(
+        key: FeedKeys.errorMas,
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          children: [
+            Text(error, textAlign: TextAlign.center, style: AppTexto.cuerpo(size: 13)),
+            TextButton(
+              key: FeedKeys.reintentarMasBoton,
+              onPressed: onReintentar,
+              style: TextButton.styleFrom(foregroundColor: AppColores.primario),
+              child: const Text('Reintentar'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (state.hayMas) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: SizedBox(
+            width: 26,
+            height: 26,
+            child: CircularProgressIndicator(
+              key: FeedKeys.cargandoMas,
+              strokeWidth: 2.5,
+              color: AppColores.primario,
+            ),
+          ),
+        ),
+      );
+    }
+    return Padding(
+      key: FeedKeys.finDeLista,
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Text(
+        'Ya viste todas las publicaciones.',
+        textAlign: TextAlign.center,
+        style: AppTexto.cuerpo(size: 13),
+      ),
     );
   }
 }
@@ -269,7 +368,9 @@ class _Aviso extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Es una lista para que "jalar para actualizar" también funcione aquí.
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.fromLTRB(16, 24, 16, 88),
       children: [
         Center(
