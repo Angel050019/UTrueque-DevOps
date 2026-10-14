@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_ui.dart';
+import '../../../../core/widgets/aviso_pantalla.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../auth/domain/entities/usuario.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
@@ -227,7 +228,7 @@ class _ListaFeed extends StatelessWidget {
       },
       builder: (context, state) {
         if (state is FeedError) {
-          return _Aviso(
+          return AvisoPantalla(
             key: FeedKeys.error,
             icono: state.sinConexion ? Icons.wifi_off_rounded : Icons.cloud_off_rounded,
             titulo: state.sinConexion ? 'Sin conexión' : 'Algo salió mal',
@@ -244,7 +245,7 @@ class _ListaFeed extends StatelessWidget {
           return RefreshIndicator(
             color: AppColores.primario,
             onRefresh: cubit.actualizar,
-            child: const _Aviso(
+            child: const AvisoPantalla(
               key: FeedKeys.vacio,
               icono: Icons.swap_horiz_rounded,
               titulo: 'Aún no hay publicaciones',
@@ -348,48 +349,6 @@ class _FinDeLista extends StatelessWidget {
         textAlign: TextAlign.center,
         style: AppTexto.cuerpo(size: 13),
       ),
-    );
-  }
-}
-
-class _Aviso extends StatelessWidget {
-  const _Aviso({
-    super.key,
-    required this.icono,
-    required this.titulo,
-    required this.texto,
-    this.accion,
-  });
-
-  final IconData icono;
-  final String titulo;
-  final String texto;
-  final Widget? accion;
-
-  @override
-  Widget build(BuildContext context) {
-    // Es una lista para que "jalar para actualizar" también funcione aquí.
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 88),
-      children: [
-        Center(
-          child: Container(
-            width: 112,
-            height: 112,
-            decoration: const BoxDecoration(
-              color: AppColores.primarioSuave,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icono, size: 52, color: AppColores.primario),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(titulo, textAlign: TextAlign.center, style: AppTexto.subtitulo(size: 18)),
-        const SizedBox(height: 8),
-        Text(texto, textAlign: TextAlign.center, style: AppTexto.cuerpo(size: 14)),
-        if (accion != null) ...[const SizedBox(height: 20), accion!],
-      ],
     );
   }
 }

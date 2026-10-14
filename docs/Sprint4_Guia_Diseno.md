@@ -25,12 +25,12 @@ Piezas que puedes ajustar:
 | Pieza | Dónde | Para qué sirve |
 | :--- | :--- | :--- |
 | `TarjetaPublicacion` | `features/publicaciones/presentation/widgets/tarjeta_publicacion.dart` | Cada artículo del Feed. |
-| `_Aviso` (Feed) | `feed_page.dart` | Pantallas de Feed vacío, sin conexión y error. |
+| `EtiquetaPublicacion` | `features/publicaciones/presentation/widgets/etiqueta_publicacion.dart` | Etiquetas redondas de precio, modalidad, categoría y estado (Feed y Detalle). |
+| `AvisoPantalla` | `core/widgets/aviso_pantalla.dart` | Avisos a pantalla completa: Feed vacío, sin conexión, error y "ya no está disponible" (Feed y Detalle). |
 | `_FinDeLista` | `feed_page.dart` | Lo que se ve al final de la lista. |
 | `_Carrusel` | `detalle_publicacion_page.dart` | Fotos que se deslizan con el indicador "1 de N". |
 | `_TarjetaDueno` | `detalle_publicacion_page.dart` | Datos públicos del dueño. |
 | `_Acciones` | `detalle_publicacion_page.dart` | Botón de abajo (Contactar / Gestionar). |
-| `_Aviso` (Detalle) | `detalle_publicacion_page.dart` | "Esta publicación ya no está disponible." y error con "Reintentar". |
 
 Si una pieza crece mucho, puedes sacarla a su propio archivo dentro de `presentation/widgets/`. Busca `TODO(diseño)` en VS Code (`Ctrl+Shift+F`) para ver los lugares marcados.
 
@@ -85,7 +85,7 @@ Datos que tienes en `publicacion` para dibujar: `titulo`, `descripcion`, `catego
 - `features/feed/presentation/pages/feed_page.dart`
 - `features/publicaciones/presentation/pages/detalle_publicacion_page.dart`
 - `features/publicaciones/presentation/widgets/` (incluida `tarjeta_publicacion.dart`; menos la lógica de `elegir_fotos_articulo.dart`)
-- `core/theme/app_theme.dart`
+- `core/theme/app_theme.dart` y `core/widgets/aviso_pantalla.dart`
 - `assets/` si necesitas ilustraciones (avísanos para registrarlas en `pubspec.yaml`)
 
 ❌ **No** (pídelo al equipo de desarrollo):

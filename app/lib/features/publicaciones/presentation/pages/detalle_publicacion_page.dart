@@ -6,15 +6,16 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/formato_fecha.dart';
 import '../../../../core/utils/formato_precio.dart';
 import '../../../../core/widgets/app_ui.dart';
+import '../../../../core/widgets/aviso_pantalla.dart';
 import '../../../../core/widgets/en_desarrollo_page.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../perfil/presentation/widgets/avatar_perfil.dart';
-import '../../domain/entities/estado_publicacion.dart';
 import '../../domain/entities/modalidad.dart';
 import '../../domain/entities/publicacion.dart';
 import '../cubit/detalle_publicacion_cubit.dart';
 import '../cubit/detalle_publicacion_state.dart';
 import '../detalle_keys.dart';
+import '../widgets/etiqueta_publicacion.dart';
 
 /// Qué hacer cuando el Detalle descubre el estado actual de la publicación:
 /// [actual] es la publicación como está hoy, o `null` si ya se borró.
@@ -89,7 +90,7 @@ class DetallePublicacionPage extends StatelessWidget {
               );
               barraInferior = _Acciones(state: state);
             } else if (state is DetalleNoEncontrado) {
-              contenido = _Aviso(
+              contenido = AvisoPantalla(
                 key: DetalleKeys.noEncontrado,
                 icono: Icons.search_off_rounded,
                 titulo: state.mensaje,
@@ -101,7 +102,7 @@ class DetallePublicacionPage extends StatelessWidget {
                 ),
               );
             } else if (state is DetalleError) {
-              contenido = _Aviso(
+              contenido = AvisoPantalla(
                 key: DetalleKeys.error,
                 icono: Icons.cloud_off_rounded,
                 titulo: 'No pudimos abrir la publicación',
@@ -169,14 +170,14 @@ class _Contenido extends StatelessWidget {
                 runSpacing: 6,
                 children: [
                   if (publicacion.categoriaNombre != null)
-                    _Etiqueta(
+                    EtiquetaPublicacion(
                       texto: publicacion.categoriaNombre!,
                       fondo: AppColores.primarioSuave,
                       color: AppColores.primario,
                     ),
-                  _EtiquetaEstado(key: DetalleKeys.estado, estado: publicacion.estado),
+                  EtiquetaPublicacion.estado(publicacion.estado, key: DetalleKeys.estado),
                   if (state.esMia)
-                    const _Etiqueta(
+                    const EtiquetaPublicacion(
                       key: DetalleKeys.esMiaEtiqueta,
                       texto: 'Es tu publicación',
                       fondo: AppColores.primario,
@@ -405,80 +406,6 @@ class _Acciones extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(AppMedidas.margen, 8, AppMedidas.margen, 12),
         child: boton,
       ),
-    );
-  }
-}
-
-class _EtiquetaEstado extends StatelessWidget {
-  const _EtiquetaEstado({super.key, required this.estado});
-
-  final EstadoPublicacion estado;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool disponible = estado is Disponible;
-    return _Etiqueta(
-      texto: estado.etiqueta,
-      fondo: disponible ? AppColores.acentoSuave : AppColores.errorSuave,
-      color: disponible ? AppColores.primario : AppColores.error,
-    );
-  }
-}
-
-class _Etiqueta extends StatelessWidget {
-  const _Etiqueta({super.key, required this.texto, required this.fondo, required this.color});
-
-  final String texto;
-  final Color fondo;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: fondo, borderRadius: BorderRadius.circular(999)),
-      child: Text(texto, style: AppTexto.cuerpo(size: 12, color: color, peso: FontWeight.w600)),
-    );
-  }
-}
-
-class _Aviso extends StatelessWidget {
-  const _Aviso({
-    super.key,
-    required this.icono,
-    required this.titulo,
-    required this.texto,
-    required this.accion,
-  });
-
-  final IconData icono;
-  final String titulo;
-  final String texto;
-  final Widget accion;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(32, 40, 32, 24),
-      children: [
-        Center(
-          child: Container(
-            width: 112,
-            height: 112,
-            decoration: const BoxDecoration(
-              color: AppColores.primarioSuave,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icono, size: 52, color: AppColores.primario),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(titulo, textAlign: TextAlign.center, style: AppTexto.subtitulo(size: 18)),
-        const SizedBox(height: 8),
-        Text(texto, textAlign: TextAlign.center, style: AppTexto.cuerpo(size: 14)),
-        const SizedBox(height: 20),
-        accion,
-      ],
     );
   }
 }
