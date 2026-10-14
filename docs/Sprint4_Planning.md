@@ -41,7 +41,7 @@ Se eligió HU-04 porque ya hay publicaciones guardadas (HU-03) pero hoy el Feed 
 | Crear el issue "HU-04: Feed de Publicaciones" en GitHub con los criterios de la sección 5 | Diaz Huerta Diego Oziel | Product Owner |
 | Base de datos: vista `publicaciones_detalle` (publicación + categoría + perfil público del dueño), función `feed_publicaciones` (Feed por páginas) e índice para el Feed | Cadena Vega Jonathan | Develop Team |
 | Lógica: `PaginaFeed`, `DetallePublicacion`, casos de uso `ObtenerFeed` y `ObtenerDetallePublicacion`, fallo "publicación no encontrada", modelo y repositorio contra Supabase | Cadena Vega Jonathan | Develop Team |
-| Pruebas unitarias de casos de uso y modelos, y pruebas del API REST simulado con patrón AAA (CP-20 a CP-27) | Cadena Vega Jonathan | Develop Team |
+| Pruebas unitarias de casos de uso y modelos, y pruebas del API REST simulado con patrón AAA (CP-18 a CP-27; CP-18 y CP-19 del Sprint 3 se reescriben para el Feed nuevo) | Cadena Vega Jonathan | Develop Team |
 | Estado y navegación: `FeedCubit` (primera página, siguiente página, actualizar), `DetallePublicacionCubit`, ruta `/publicacion` y quitar "En desarrollo" de la tarjeta del Feed y de "Ver publicación" | Gonzalez Casarrubias Luis Angel | Develop Team |
 | Pantallas Feed (scroll infinito, jalar para actualizar, estados vacío/error/sin conexión) y Detalle (carrusel de fotos, datos, dueño, avisos por estado) con la paleta del logo y Keys (`FeedKeys`, `DetalleKeys`) | Gonzalez Casarrubias Luis Angel | Develop Team |
 | Pruebas de `FeedCubit` y `DetallePublicacionCubit` (una por escenario Gherkin como mínimo) | Gonzalez Casarrubias Luis Angel | Develop Team |
@@ -150,16 +150,16 @@ Para encontrar artículos académicos que me sirvan y saber quién los ofrece
 
 | Escenario | Pruebas que lo cubren |
 | :--- | :--- |
-| 1. Ver el Feed | `obtener_feed_test` (primera página), `publicacion_model_test` (lee la vista con dueño y categoría), `feed_cubit_test` (cargar → Cargado), `publicaciones_api_rest_test` CP-20 (200 con la primera página, lleva el token) |
-| 2. Cargar más | `obtener_feed_test` (manda el cursor de la última), `feed_cubit_test` (cargarMas agrega sin repetir; fin de la lista), CP-21 (siguiente página con cursor) |
+| 1. Ver el Feed | `obtener_feed_test` (primera página), `publicacion_model_test` (lee la vista con dueño y categoría), `feed_cubit_test` (cargar → Cargado), `publicaciones_api_rest_test` CP-18 (200 con la primera página, sin cursor y con el token) |
+| 2. Cargar más | `obtener_feed_test` (manda el cursor de la última), `feed_cubit_test` (cargarMas agrega sin repetir; fin de la lista; ignora la página vieja si se actualizó), CP-20 (página completa → cursor con la fecha exacta), CP-21 (siguiente página con cursor; menos de 20 → fin) |
 | 3. Jalar para actualizar | `feed_cubit_test` (actualizar reemplaza la lista desde el inicio) |
 | 4. Feed vacío | `feed_cubit_test` (lista vacía → Vacío), CP-22 (200 con `[]`) |
 | 5. Sin conexión | `obtener_feed_test`, `obtener_detalle_publicacion_test`, `feed_cubit_test` (conserva la lista), `detalle_publicacion_cubit_test`, CP-26 (ninguna petición) |
-| 6. Error del servidor | `feed_cubit_test`, `detalle_publicacion_cubit_test`, CP-25 (500 → mensaje genérico, sin IP ni nombres internos) |
-| 7. Ver detalle | `obtener_detalle_publicacion_test`, `detalle_publicacion_cubit_test` (cargar → Cargado), CP-23 (200 con fotos y datos del dueño) |
+| 6. Error del servidor | `obtener_feed_test`, `feed_cubit_test`, `detalle_publicacion_cubit_test`, CP-19 (Feed 500) y CP-25 (Detalle 500): mensaje genérico, sin IP ni nombres internos |
+| 7. Ver detalle | `obtener_detalle_publicacion_test`, `detalle_publicacion_cubit_test` (cargar → Cargado), CP-23 (200 con todas las fotos y datos del dueño), `formato_fecha_test` |
 | 8. Mi publicación | `detalle_publicacion_cubit_test` (esMia = true cuando el dueño es el usuario actual) |
 | 9. Reservada o vendida | `estado_publicacion_test` (Reservado y Vendido no permiten contactar), `detalle_publicacion_cubit_test` (aviso por estado), `feed_cubit_test` (al actualizar ya no aparece la vendida) |
-| 10. Eliminada | `obtener_detalle_publicacion_test` (fila vacía → no encontrada), `detalle_publicacion_cubit_test` (NoEncontrada), `feed_cubit_test` (quitar de la lista), CP-24 (200 con `[]` → "ya no está disponible") |
+| 10. Eliminada | `obtener_detalle_publicacion_test` (fila vacía → no encontrada), `detalle_publicacion_cubit_test` (NoEncontrada), `feed_cubit_test` (quitar de la lista), CP-24 (200 con `[]` o id inválido → "ya no está disponible") |
 
 Otra prueba del API: CP-27 (sin sesión no se hace ninguna petición).
 
