@@ -114,11 +114,11 @@ jobs:
           secure: true
           username: ${{ secrets.MAIL_USERNAME }}
           password: ${{ secrets.MAIL_PASSWORD }}
-          subject: "🚨 [CI FAILURE] Falló el pipeline en ${{ github.repository }} (${{ github.ref_name }})"
+          subject: " [CI FAILURE] Falló el pipeline en ${{ github.repository }} (${{ github.ref_name }})"
           to: ${{ secrets.MAIL_RECIPIENTS }}
           from: "GitHub CI Bot <${{ secrets.MAIL_USERNAME }}>"
           html_body: |
-            <h2>🚨 El pipeline de CI ha fallado en <strong>UTrueque</strong></h2>
+            <h2> El pipeline de CI ha fallado en <strong>UTrueque</strong></h2>
             <p>Se detectó un fallo durante la ejecución de las pruebas o análisis estático.</p>
             <ul>
               <li><strong>Repositorio:</strong> ${{ github.repository }}</li>
