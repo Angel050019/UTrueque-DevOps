@@ -134,4 +134,8 @@ comment on function public.feed_publicaciones(timestamptz, uuid, integer) is
 revoke all on function public.feed_publicaciones(timestamptz, uuid, integer) from public, anon;
 grant execute on function public.feed_publicaciones(timestamptz, uuid, integer) to authenticated;
 
+-- Pide a la API (PostgREST) que vuelva a leer el esquema para que la vista
+-- y la función queden disponibles de inmediato.
+notify pgrst, 'reload schema';
+
 commit;
