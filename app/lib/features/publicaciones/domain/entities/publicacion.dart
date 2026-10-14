@@ -19,6 +19,10 @@ class Publicacion extends Equatable {
     this.portadaUrl,
     this.duenoNombre,
     this.categoriaNombre,
+    this.fotosUrls = const [],
+    this.duenoFotoUrl,
+    this.duenoDivision,
+    this.duenoCarrera,
   });
 
   final String id;
@@ -51,6 +55,22 @@ class Publicacion extends Equatable {
   /// Nombre de la categoría.
   final String? categoriaNombre;
 
+  /// HU-04: datos extra para el Detalle. Solo vienen cuando se consulta la
+  /// vista `publicaciones_detalle` (Feed y Detalle).
+  ///
+  /// URL pública de cada foto, en el mismo orden que [fotos].
+  final List<String> fotosUrls;
+
+  /// Foto de perfil del dueño (URL pública) o `null` si no tiene.
+  final String? duenoFotoUrl;
+
+  /// División y carrera del dueño (datos públicos de su perfil).
+  final String? duenoDivision;
+  final String? duenoCarrera;
+
+  /// ¿La publicó el estudiante con este [idUsuario]?
+  bool esDe(String? idUsuario) => idUsuario != null && idUsuario == usuarioId;
+
   @override
   List<Object?> get props => [
         id,
@@ -66,5 +86,9 @@ class Publicacion extends Equatable {
         portadaUrl,
         duenoNombre,
         categoriaNombre,
+        fotosUrls,
+        duenoFotoUrl,
+        duenoDivision,
+        duenoCarrera,
       ];
 }

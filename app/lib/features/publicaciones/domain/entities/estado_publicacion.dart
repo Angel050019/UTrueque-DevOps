@@ -27,7 +27,14 @@ abstract class EstadoPublicacion extends Equatable {
   String get etiqueta;
 
   /// ¿Otro estudiante puede pedir este artículo?
+  /// HU-04: decide si el botón "Contactar al vendedor" está habilitado.
   bool get aceptaSolicitudes => false;
+
+  /// HU-04: aviso que muestra el Detalle en este estado (`null` si no hay).
+  String? get aviso => null;
+
+  /// HU-04: ¿se muestra en el Feed? Las Vendidas ya no.
+  bool get visibleEnFeed => true;
 
   EstadoPublicacion reservar() => _noPermitido('Reservado');
 
@@ -85,6 +92,9 @@ class Reservado extends EstadoPublicacion {
   String get etiqueta => 'Reservado';
 
   @override
+  String get aviso => 'Este artículo está reservado: el dueño ya está en trato.';
+
+  @override
   EstadoPublicacion liberar() => const Disponible();
 
   @override
@@ -99,4 +109,10 @@ class Vendido extends EstadoPublicacion {
 
   @override
   String get etiqueta => 'Vendido';
+
+  @override
+  String get aviso => 'Este artículo ya fue vendido.';
+
+  @override
+  bool get visibleEnFeed => false;
 }

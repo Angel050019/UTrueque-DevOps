@@ -5,6 +5,7 @@ import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/formato_imagen.dart';
 import '../../domain/entities/foto_articulo.dart';
 import '../../domain/entities/modalidad.dart';
+import '../../domain/entities/pagina_feed.dart';
 import '../../domain/errors/publicacion_failures.dart';
 import '../models/publicacion_model.dart';
 
@@ -12,7 +13,8 @@ import '../models/publicacion_model.dart';
 /// feature que importa `supabase_flutter`; traduce sus excepciones a
 /// [Failure]s con mensajes en español que no revelan detalles internos.
 abstract class PublicacionRemoteDataSource {
-  Future<List<PublicacionModel>> obtenerPublicacionesRecientes({required int limite});
+  Future<PaginaFeed> obtenerFeed({CursorFeed? despuesDe, required int limite});
+  Future<PublicacionModel> obtenerDetalle(String id);
   Future<List<CategoriaModel>> obtenerCategorias();
   Future<String> subirFoto(FotoArticulo foto);
   Future<void> eliminarFotos(List<String> rutas);
@@ -44,21 +46,60 @@ class PublicacionRemoteDataSourceImpl implements PublicacionRemoteDataSource {
 
   StorageFileApi get _bucket => _client.storage.from(AppConstants.bucketPublicaciones);
 
+  /// HU-04: una página del Feed con la función `feed_publicaciones`
+  /// (`POST /rest/v1/rpc/feed_publicaciones`). La base ya filtra las
+  /// Vendidas, ordena de la más nueva a la más vieja y une la categoría y
+  /// el perfil público del dueño.
   @override
-  Future<List<PublicacionModel>> obtenerPublicacionesRecientes({required int limite}) async {
+  Future<PaginaFeed> obtenerFeed({CursorFeed? despuesDe, required int limite}) async {
+    // Si no hay sesión, no tiene caso llamar al API (el Feed es solo para
+    // estudiantes autenticados).
+    if (_client.auth.currentUser == null) throw const SesionNoIniciadaFailure();
     try {
-      final List<Map<String, dynamic>> filas = await _client
-          .from(AppConstants.tablaPublicaciones)
-          .select(PublicacionModel.columnasFeed)
-          // Las vendidas ya no se muestran en el Feed.
-          .inFilter('estado', const ['disponible', 'reservado'])
-          .order('created_at', ascending: false)
-          .limit(limite);
-      return filas
+      final List<dynamic> respuesta = await _client.rpc<List<dynamic>>(
+        PublicacionModel.funcionFeed,
+        params: <String, dynamic>{
+          'p_limite': limite,
+          if (despuesDe != null) 'p_antes_de': despuesDe.fecha,
+          if (despuesDe != null) 'p_antes_id': despuesDe.id,
+        },
+      );
+      final List<Map<String, dynamic>> filas =
+          respuesta.cast<Map<String, dynamic>>().toList(growable: false);
+      final List<PublicacionModel> publicaciones = filas
           .map((fila) => PublicacionModel.fromMap(fila, urlFoto: _bucket.getPublicUrl))
           .toList(growable: false);
+
+      // Si llegó la página completa puede haber más: el cursor es la última
+      // publicación, con su fecha tal como la mandó el servidor.
+      final CursorFeed? siguiente = filas.length < limite
+          ? null
+          : CursorFeed(fecha: filas.last['created_at'] as String, id: filas.last['id'] as String);
+      return PaginaFeed(publicaciones: publicaciones, siguiente: siguiente);
+    } on PostgrestException {
+      // SEGURIDAD: mensaje genérico, sin detalles internos.
+      throw const CargarPublicacionesFailure();
+    }
+  }
+
+  /// HU-04: detalle desde la vista `publicaciones_detalle`
+  /// (`GET /rest/v1/publicaciones_detalle?id=eq.<id>`). Si la respuesta
+  /// llega vacía, la publicación ya se borró.
+  @override
+  Future<PublicacionModel> obtenerDetalle(String id) async {
+    if (_client.auth.currentUser == null) throw const SesionNoIniciadaFailure();
+    try {
+      final List<Map<String, dynamic>> filas = await _client
+          .from(PublicacionModel.vistaDetalle)
+          .select()
+          .eq('id', id)
+          .limit(1);
+      if (filas.isEmpty) throw const PublicacionNoEncontradaFailure();
+      return PublicacionModel.fromMap(filas.first, urlFoto: _bucket.getPublicUrl);
     } on PostgrestException catch (e) {
-      throw _traducir(e);
+      // Un id con formato inválido (22P02) es lo mismo que "no existe".
+      if (e.code == '22P02') throw const PublicacionNoEncontradaFailure();
+      throw const CargarPublicacionesFailure();
     }
   }
 

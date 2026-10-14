@@ -47,3 +47,20 @@ class TransicionNoPermitidaFailure extends Failure {
   const TransicionNoPermitidaFailure(String desde, String hacia)
       : super('Una publicación $desde no puede pasar a $hacia.');
 }
+
+// ---------------------------------------------------------------------------
+// HU-04: Feed de publicaciones
+// ---------------------------------------------------------------------------
+
+/// No se pudo leer el Feed o el Detalle por un error del servidor
+/// (HU-04, Escenario 6). SEGURIDAD: el mensaje no revela detalles internos.
+class CargarPublicacionesFailure extends ServidorFailure {
+  const CargarPublicacionesFailure()
+      : super('No pudimos cargar las publicaciones. Inténtalo de nuevo.');
+}
+
+/// La publicación ya no existe: su dueño la borró (HU-04, Escenario 10).
+class PublicacionNoEncontradaFailure extends Failure {
+  const PublicacionNoEncontradaFailure()
+      : super('Esta publicación ya no está disponible.');
+}
