@@ -249,6 +249,7 @@ class _Contenido extends StatelessWidget {
 }
 
 /// Carrusel con todas las fotos y el indicador "1 de N".
+// TODO(diseño): carrusel según Figma (puntos, esquinas, botón de regreso encima).
 class _Carrusel extends StatefulWidget {
   const _Carrusel({required this.urls});
 
@@ -318,6 +319,7 @@ class _CarruselState extends State<_Carrusel> {
 }
 
 /// Perfil público del dueño: foto, nombre, división y carrera.
+// TODO(diseño): tarjeta del dueño según Figma.
 class _TarjetaDueno extends StatelessWidget {
   const _TarjetaDueno({required this.publicacion});
 
@@ -360,6 +362,7 @@ class _TarjetaDueno extends StatelessWidget {
 
 /// Botón de abajo: "Contactar al vendedor" o, si es mía, "Gestionar
 /// publicación". Los dos abren "En desarrollo" por ahora.
+// TODO(diseño): botón fijo de abajo según Figma.
 class _Acciones extends StatelessWidget {
   const _Acciones({required this.state});
 
