@@ -35,7 +35,7 @@ Por eso, "probar el API REST" significa comprobar que **la app envía las petici
 | --- | --- | --- |
 | Autenticación institucional (`@utsjr.edu.mx`) | HU-01 | **Automatizado (7 casos AAA)** |
 | Perfil (división y carrera) | HU-02 | Planeado — Sprint 2 |
-| Publicaciones y catálogo | HU-03 / HU-04 | HU-03: **Automatizado (10 casos AAA, CP-08 a CP-17)** — Sprint 3; HU-04 planeado |
+| Publicaciones y catálogo | HU-03 / HU-04 | HU-03: **Automatizado (10 casos AAA, CP-08 a CP-17)** — Sprint 3; HU-04 (Feed y Detalle): **Automatizado (10 casos AAA, CP-18 a CP-27)** — Sprint 4 |
 | Trueques y chat | HU-05+ | Planeado — Sprints 5-7 |
 
 ### 1.2 Estrategia: cómo se prueba el API sin depender de internet

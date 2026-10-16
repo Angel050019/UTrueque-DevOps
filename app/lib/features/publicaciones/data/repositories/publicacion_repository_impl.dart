@@ -1,6 +1,7 @@
 import '../../domain/entities/categoria.dart';
 import '../../domain/entities/foto_articulo.dart';
 import '../../domain/entities/modalidad.dart';
+import '../../domain/entities/pagina_feed.dart';
 import '../../domain/entities/publicacion.dart';
 import '../../domain/repositories/publicacion_repository.dart';
 import '../datasources/publicacion_remote_datasource.dart';
@@ -12,8 +13,11 @@ class PublicacionRepositoryImpl implements PublicacionRepository {
   final PublicacionRemoteDataSource _remoteDataSource;
 
   @override
-  Future<List<Publicacion>> obtenerPublicacionesRecientes({int limite = 20}) =>
-      _remoteDataSource.obtenerPublicacionesRecientes(limite: limite);
+  Future<PaginaFeed> obtenerFeed({CursorFeed? despuesDe, required int limite}) =>
+      _remoteDataSource.obtenerFeed(despuesDe: despuesDe, limite: limite);
+
+  @override
+  Future<Publicacion> obtenerDetalle(String id) => _remoteDataSource.obtenerDetalle(id);
 
   @override
   Future<List<Categoria>> obtenerCategorias() => _remoteDataSource.obtenerCategorias();

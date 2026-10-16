@@ -10,7 +10,12 @@
 // (`/rest/v1/...`) y a Storage (`/storage/v1/object/...`) y cómo interpreta
 // cada respuesta (200, 201, 400, 403, 413 y sin red).
 //
-// Ver docs/Plan_de_Pruebas.md, Sección 2, y docs/Sprint3_Planning.md.
+// HU-04 (Feed de publicaciones) agrega CP-18 a CP-27: el Feed paginado con
+// la función `feed_publicaciones` (POST /rest/v1/rpc/...) y el Detalle con
+// la vista `publicaciones_detalle` (GET /rest/v1/publicaciones_detalle).
+//
+// Ver docs/Plan_de_Pruebas.md, Sección 2, docs/Sprint3_Planning.md y
+// docs/Sprint4_Planning.md.
 
 import 'dart:convert';
 
@@ -25,11 +30,13 @@ import 'package:utrueque/features/publicaciones/data/repositories/publicacion_re
 import 'package:utrueque/features/publicaciones/domain/entities/categoria.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/estado_publicacion.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/modalidad.dart';
+import 'package:utrueque/features/publicaciones/domain/entities/pagina_feed.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/publicacion.dart';
 import 'package:utrueque/features/publicaciones/domain/errors/publicacion_failures.dart';
 import 'package:utrueque/features/publicaciones/domain/usecases/crear_publicacion.dart';
 import 'package:utrueque/features/publicaciones/domain/usecases/obtener_categorias.dart';
-import 'package:utrueque/features/publicaciones/domain/usecases/obtener_publicaciones_recientes.dart';
+import 'package:utrueque/features/publicaciones/domain/usecases/obtener_detalle_publicacion.dart';
+import 'package:utrueque/features/publicaciones/domain/usecases/obtener_feed.dart';
 
 import '../features/publicaciones/fixtures.dart';
 
@@ -39,6 +46,10 @@ const String _tokenAcceso = 'token-de-acceso-de-pruebas';
 
 const String _rutaStorage = '/storage/v1/object/publicaciones';
 const String _rutaPublicaciones = '/rest/v1/publicaciones';
+
+// HU-04
+const String _rutaFeed = '/rest/v1/rpc/feed_publicaciones';
+const String _rutaDetalle = '/rest/v1/publicaciones_detalle';
 
 /// Servidor HTTP simulado que imita las respuestas de Supabase y guarda cada
 /// petición recibida para revisarla en el ASSERT. Las rutas se buscan por
@@ -126,6 +137,35 @@ Map<String, dynamic> _filaCreada(Map<String, dynamic> enviado) {
 
 Map<String, dynamic> _cuerpoJson(http.Request peticion) =>
     jsonDecode(peticion.body) as Map<String, dynamic>;
+
+/// HU-04: fila de la vista `publicaciones_detalle` (la misma forma que
+/// regresa la función `feed_publicaciones`).
+Map<String, dynamic> _filaVista(String id, {String fecha = '2026-10-13T18:00:00.123456+00:00'}) {
+  return <String, dynamic>{
+    'id': id,
+    'usuario_id': idAlumno,
+    'titulo': tituloValido,
+    'descripcion': descripcionValida,
+    'categoria_id': 2,
+    'categoria_nombre': 'Calculadoras',
+    'modalidad': 'venta',
+    'precio': 150,
+    'estado': 'disponible',
+    'fotos': <String>[rutaFoto1, rutaFoto2],
+    'created_at': fecha,
+    'updated_at': fecha,
+    'dueno_nombre': 'Ana López',
+    'dueno_foto_url': '$_urlSupabase/storage/v1/object/public/avatars/$idAlumno/a.jpg',
+    'dueno_division_id': 11,
+    'dueno_division': 'Mecatrónica, Desarrollo de Software e Ingeniería Civil',
+    'dueno_carrera_id': 101,
+    'dueno_carrera': 'Ingeniería en Desarrollo y Gestión de Software',
+  };
+}
+
+/// HU-04: [cantidad] filas con ids `pub-0`, `pub-1`, …
+List<Map<String, dynamic>> _filasVista(int cantidad) =>
+    List<Map<String, dynamic>>.generate(cantidad, (i) => _filaVista('pub-$i'));
 
 void main() {
   late _ApiSupabaseSimulada api;
@@ -462,75 +502,213 @@ void main() {
       await expectLater(repositorio.eliminarFotos(const [rutaFoto1]), throwsA(isA<ServidorFailure>()));
       await repositorio.eliminarFotos(const []);
     });
+  });
+
+  group('API REST del Feed y el Detalle (HU-04) — patrón AAA', () {
+    ObtenerFeed obtenerFeed({bool conectado = true}) =>
+        ObtenerFeed(repositorio, _RedSimulada(conectado: conectado));
+
+    ObtenerDetallePublicacion obtenerDetalle({bool conectado = true}) =>
+        ObtenerDetallePublicacion(repositorio, _RedSimulada(conectado: conectado));
 
     test(
-        'CP-18 (Feed): GET /rest/v1/publicaciones responde 200 con las recientes, '
-        'su dueño, su categoría y la URL pública de la portada', () async {
+        'CP-18 (Escenario 1): POST /rest/v1/rpc/feed_publicaciones responde 200 con las '
+        'publicaciones, su dueño, su categoría y la URL pública de cada foto', () async {
       // ARRANGE
-      api.cuando(
-        'GET',
-        _rutaPublicaciones,
-        (_) => _json(200, <Map<String, dynamic>>[
-          <String, dynamic>{
-            'id': 'pub-1',
-            'usuario_id': idAlumno,
-            'titulo': tituloValido,
-            'descripcion': descripcionValida,
-            'categoria_id': 2,
-            'modalidad': 'venta',
-            'precio': 150,
-            'estado': 'disponible',
-            'fotos': <String>[rutaFoto1],
-            'created_at': '2026-10-09T19:21:07Z',
-            'usuarios': <String, dynamic>{'nombre_mostrar': 'Ana López'},
-            'categorias': <String, dynamic>{'nombre': 'Calculadoras'},
-          },
-        ]),
-      );
+      api.cuando('POST', _rutaFeed, (_) => _json(200, <Map<String, dynamic>>[_filaVista('pub-1')]));
 
       // ACT
-      final List<Publicacion> recientes =
-          await ObtenerPublicacionesRecientes(repositorio, _RedSimulada(conectado: true))();
+      final PaginaFeed pagina = await obtenerFeed()();
 
       // ASSERT: respuesta interpretada
-      final Publicacion publicacion = recientes.single;
+      final Publicacion publicacion = pagina.publicaciones.single;
       expect(publicacion.precio, 150);
       expect(publicacion.duenoNombre, 'Ana López');
       expect(publicacion.categoriaNombre, 'Calculadoras');
+      expect(publicacion.estado, const Disponible());
       expect(
         publicacion.portadaUrl,
         '$_urlSupabase/storage/v1/object/public/publicaciones/$rutaFoto1',
       );
+      expect(publicacion.fotosUrls, hasLength(2));
 
-      // ASSERT: petición enviada
+      // ASSERT: petición enviada (primera página: sin cursor, 20 por página)
       final http.Request peticion = api.peticionesDeLaApp.single;
-      expect(peticion.method, 'GET');
-      expect(peticion.url.path, _rutaPublicaciones);
-      expect(peticion.url.queryParameters['select'], contains('usuarios(nombre_mostrar)'));
-      expect(peticion.url.queryParameters['select'], contains('categorias(nombre)'));
-      // La librería de Supabase pone cada valor entre comillas.
-      expect(peticion.url.queryParameters['estado'], 'in.("disponible","reservado")');
-      expect(peticion.url.queryParameters['order'], startsWith('created_at.desc'));
-      expect(peticion.url.queryParameters['limit'], '20');
+      expect(peticion.method, 'POST');
+      expect(peticion.url.path, _rutaFeed);
+      expect(_cuerpoJson(peticion), <String, dynamic>{'p_limite': 20});
       expect(peticion.headers['Authorization'], 'Bearer $_tokenAcceso');
     });
 
-    test('CP-19 (Feed): si el API responde 500, la app muestra un mensaje genérico', () async {
+    test('CP-19 (Escenario 6): si el Feed responde 500, la app muestra un mensaje genérico',
+        () async {
       // ARRANGE
-      api.cuando('GET', _rutaPublicaciones, (_) => _json(500, <String, dynamic>{
+      api.cuando('POST', _rutaFeed, (_) => _json(500, <String, dynamic>{
             'code': 'XX000',
             'message': 'internal error at 10.0.0.8',
           }));
 
       // ACT + ASSERT
       await expectLater(
-        repositorio.obtenerPublicacionesRecientes(),
-        throwsA(isA<ServidorFailure>().having(
-          (f) => f.mensaje,
-          'mensaje',
-          isNot(contains('10.0.0.8')),
-        )),
+        obtenerFeed()(),
+        throwsA(isA<CargarPublicacionesFailure>()
+            .having((f) => f.mensaje, 'mensaje', 'No pudimos cargar las publicaciones. Inténtalo de nuevo.')
+            .having((f) => f.mensaje, 'sin detalles internos', isNot(contains('10.0.0.8')))),
       );
+    });
+
+    test(
+        'CP-20 (Escenario 2): una página completa (20) trae el cursor con la fecha EXACTA '
+        '(microsegundos) y el id de la última', () async {
+      // ARRANGE
+      api.cuando('POST', _rutaFeed, (_) => _json(200, _filasVista(20)));
+
+      // ACT
+      final PaginaFeed pagina = await obtenerFeed()();
+
+      // ASSERT
+      expect(pagina.publicaciones, hasLength(20));
+      expect(pagina.hayMas, isTrue);
+      expect(
+        pagina.siguiente,
+        const CursorFeed(fecha: '2026-10-13T18:00:00.123456+00:00', id: 'pub-19'),
+      );
+    });
+
+    test(
+        'CP-21 (Escenario 2): la siguiente página envía p_antes_de y p_antes_id; si llegan '
+        'menos de 20, ya no hay más', () async {
+      // ARRANGE
+      api.cuando('POST', _rutaFeed, (_) => _json(200, _filasVista(3)));
+      const CursorFeed cursor = CursorFeed(fecha: '2026-10-13T18:00:00.123456+00:00', id: 'pub-19');
+
+      // ACT
+      final PaginaFeed pagina = await obtenerFeed()(despuesDe: cursor);
+
+      // ASSERT
+      expect(pagina.publicaciones, hasLength(3));
+      expect(pagina.hayMas, isFalse);
+      expect(_cuerpoJson(api.peticionesDeLaApp.single), <String, dynamic>{
+        'p_limite': 20,
+        'p_antes_de': '2026-10-13T18:00:00.123456+00:00',
+        'p_antes_id': 'pub-19',
+      });
+    });
+
+    test('CP-22 (Escenario 4): 200 con una lista vacía es un Feed vacío, sin cursor', () async {
+      // ARRANGE
+      api.cuando('POST', _rutaFeed, (_) => _json(200, <Map<String, dynamic>>[]));
+
+      // ACT
+      final PaginaFeed pagina = await obtenerFeed()();
+
+      // ASSERT
+      expect(pagina.publicaciones, isEmpty);
+      expect(pagina.hayMas, isFalse);
+    });
+
+    test(
+        'CP-23 (Escenario 7): GET /rest/v1/publicaciones_detalle?id=eq.<id> responde 200 '
+        'con todas las fotos y el perfil público del dueño', () async {
+      // ARRANGE
+      api.cuando('GET', _rutaDetalle, (_) => _json(200, <Map<String, dynamic>>[_filaVista('pub-1')]));
+
+      // ACT
+      final Publicacion publicacion = await obtenerDetalle()('pub-1');
+
+      // ASSERT: respuesta interpretada
+      expect(publicacion.id, 'pub-1');
+      expect(publicacion.fotosUrls, [
+        '$_urlSupabase/storage/v1/object/public/publicaciones/$rutaFoto1',
+        '$_urlSupabase/storage/v1/object/public/publicaciones/$rutaFoto2',
+      ]);
+      expect(publicacion.duenoDivision, 'Mecatrónica, Desarrollo de Software e Ingeniería Civil');
+      expect(publicacion.duenoCarrera, 'Ingeniería en Desarrollo y Gestión de Software');
+      expect(publicacion.duenoFotoUrl, endsWith('/avatars/$idAlumno/a.jpg'));
+      expect(publicacion.creadaEn, DateTime.utc(2026, 10, 13, 18, 0, 0, 123, 456));
+
+      // ASSERT: petición enviada
+      final http.Request peticion = api.peticionesDeLaApp.single;
+      expect(peticion.method, 'GET');
+      expect(peticion.url.path, _rutaDetalle);
+      expect(peticion.url.queryParameters['id'], 'eq.pub-1');
+      expect(peticion.url.queryParameters['limit'], '1');
+      expect(peticion.headers['Authorization'], 'Bearer $_tokenAcceso');
+    });
+
+    test(
+        'CP-24 (Escenario 10): si la publicación se borró (200 con lista vacía o id '
+        'inválido 400), la app muestra "ya no está disponible"', () async {
+      // ARRANGE
+      api.cuando('GET', _rutaDetalle, (p) {
+        if (p.url.queryParameters['id'] == 'eq.no-es-uuid') {
+          return _json(400, <String, dynamic>{
+            'code': '22P02',
+            'message': 'invalid input syntax for type uuid: "no-es-uuid"',
+          });
+        }
+        return _json(200, <Map<String, dynamic>>[]);
+      });
+
+      // ACT + ASSERT
+      for (final String id in ['borrada', 'no-es-uuid']) {
+        await expectLater(
+          obtenerDetalle()(id),
+          throwsA(isA<PublicacionNoEncontradaFailure>().having(
+            (f) => f.mensaje,
+            'mensaje',
+            'Esta publicación ya no está disponible.',
+          )),
+        );
+      }
+    });
+
+    test('CP-25 (Escenario 6): si el Detalle responde 500, el mensaje no revela detalles internos',
+        () async {
+      // ARRANGE
+      api.cuando('GET', _rutaDetalle, (_) => _json(500, <String, dynamic>{
+            'code': 'XX000',
+            'message': 'relation "publicaciones_detalle" failed at 10.0.0.8',
+          }));
+
+      // ACT + ASSERT
+      await expectLater(
+        obtenerDetalle()('pub-1'),
+        throwsA(isA<CargarPublicacionesFailure>()
+            .having((f) => f.mensaje, 'sin IP', isNot(contains('10.0.0.8')))
+            .having((f) => f.mensaje, 'sin nombres internos', isNot(contains('publicaciones_detalle')))),
+      );
+    });
+
+    test('CP-26 (Escenario 5): sin conexión no se envía ninguna petición', () async {
+      // ACT + ASSERT
+      await expectLater(obtenerFeed(conectado: false)(), throwsA(isA<SinConexionFailure>()));
+      await expectLater(
+        obtenerDetalle(conectado: false)('pub-1'),
+        throwsA(isA<SinConexionFailure>()),
+      );
+      expect(api.peticionesDeLaApp, isEmpty);
+    });
+
+    test('CP-27: sin sesión no se envía ninguna petición al Feed ni al Detalle', () async {
+      // ARRANGE: un cliente que nunca inició sesión.
+      final SupabaseClient sinSesion = SupabaseClient(
+        _urlSupabase,
+        _anonKey,
+        httpClient: api.cliente,
+        authOptions: const AuthClientOptions(
+          autoRefreshToken: false,
+          authFlowType: AuthFlowType.implicit,
+        ),
+      );
+      final PublicacionRepositoryImpl repo =
+          PublicacionRepositoryImpl(PublicacionRemoteDataSourceImpl(sinSesion));
+
+      // ACT + ASSERT
+      await expectLater(repo.obtenerFeed(limite: 20), throwsA(isA<SesionNoIniciadaFailure>()));
+      await expectLater(repo.obtenerDetalle('pub-1'), throwsA(isA<SesionNoIniciadaFailure>()));
+      expect(api.peticionesDeLaApp, isEmpty);
+      await sinSesion.dispose();
     });
   });
 }

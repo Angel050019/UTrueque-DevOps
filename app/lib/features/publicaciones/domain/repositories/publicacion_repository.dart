@@ -1,15 +1,22 @@
 import '../entities/categoria.dart';
 import '../entities/foto_articulo.dart';
 import '../entities/modalidad.dart';
+import '../entities/pagina_feed.dart';
 import '../entities/publicacion.dart';
 
 /// Contrato de datos de las publicaciones. El dominio y la presentación
 /// solo conocen esta interfaz, nunca a Supabase.
 /// Todos los métodos lanzan un `Failure` si algo sale mal.
 abstract class PublicacionRepository {
-  /// Publicaciones Disponibles o Reservadas, de la más nueva a la más
-  /// vieja, con su portada, dueño y categoría (para el Feed).
-  Future<List<Publicacion>> obtenerPublicacionesRecientes({int limite = 20});
+  /// HU-04: una página del Feed. Publicaciones Disponibles o Reservadas, de
+  /// la más nueva a la más vieja, con su portada, dueño y categoría. Con
+  /// [despuesDe] trae las que siguen a ese cursor.
+  Future<PaginaFeed> obtenerFeed({CursorFeed? despuesDe, required int limite});
+
+  /// HU-04: detalle de una publicación con todas sus fotos y el perfil
+  /// público del dueño. Lanza `PublicacionNoEncontradaFailure` si ya no
+  /// existe.
+  Future<Publicacion> obtenerDetalle(String id);
 
   /// Categorías activas, en el orden en que se muestran.
   Future<List<Categoria>> obtenerCategorias();

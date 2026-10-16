@@ -8,6 +8,7 @@ import 'package:utrueque/features/publicaciones/domain/entities/categoria.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/estado_publicacion.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/foto_articulo.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/modalidad.dart';
+import 'package:utrueque/features/publicaciones/domain/entities/pagina_feed.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/publicacion.dart';
 import 'package:utrueque/features/publicaciones/domain/repositories/publicacion_repository.dart';
 
@@ -86,5 +87,50 @@ Publicacion publicacionGuardada({
     precio: precio,
     estado: EstadoPublicacion.inicial,
     fotos: fotos,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// HU-04: Feed de publicaciones
+// ---------------------------------------------------------------------------
+
+const String idOtroAlumno = '7f1c2a9e-0000-4000-8000-000000000002';
+
+/// Publicación como llega al Feed y al Detalle (de otro alumno, con dueño,
+/// categoría y URLs de las fotos).
+Publicacion publicacionDelFeed(
+  String id, {
+  EstadoPublicacion estado = const Disponible(),
+  String usuarioId = idOtroAlumno,
+}) {
+  return Publicacion(
+    id: id,
+    usuarioId: usuarioId,
+    titulo: tituloValido,
+    descripcion: descripcionValida,
+    categoriaId: categoriaCalculadoras.id,
+    categoriaNombre: categoriaCalculadoras.nombre,
+    modalidad: Modalidad.venta,
+    precio: 350,
+    estado: estado,
+    fotos: const ['$idOtroAlumno/1.jpg', '$idOtroAlumno/2.jpg'],
+    fotosUrls: const ['https://fotos/1.jpg', 'https://fotos/2.jpg'],
+    portadaUrl: 'https://fotos/1.jpg',
+    creadaEn: DateTime.utc(2026, 10, 13, 18),
+    duenoNombre: 'Luis Pérez',
+    duenoDivision: 'Mecatrónica, Desarrollo de Software e Ingeniería Civil',
+    duenoCarrera: 'Ingeniería en Desarrollo y Gestión de Software',
+  );
+}
+
+/// Cursor de la última publicación de una página.
+CursorFeed cursorDe(String id) => CursorFeed(fecha: '2026-10-13T18:00:00.123456+00:00', id: id);
+
+/// Página del Feed con las publicaciones de esos [ids]; con [hayMas] trae
+/// el cursor de la última.
+PaginaFeed paginaFeed(List<String> ids, {bool hayMas = false}) {
+  return PaginaFeed(
+    publicaciones: ids.map(publicacionDelFeed).toList(),
+    siguiente: hayMas ? cursorDe(ids.last) : null,
   );
 }

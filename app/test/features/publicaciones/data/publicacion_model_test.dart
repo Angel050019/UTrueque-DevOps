@@ -90,8 +90,9 @@ void main() {
     });
   });
 
-  group('PublicacionModel para el Feed', () {
-    test('lee el dueño y la categoría unidos y arma la URL de la portada', () {
+  group('PublicacionModel para el Feed y el Detalle (HU-04)', () {
+    test('lee la vista publicaciones_detalle: dueño, división, carrera, categoría y URLs de las fotos',
+        () {
       final PublicacionModel modelo = PublicacionModel.fromMap(
         const <String, dynamic>{
           'id': 'pub-3',
@@ -99,22 +100,37 @@ void main() {
           'titulo': tituloValido,
           'descripcion': descripcionValida,
           'categoria_id': 2,
+          'categoria_nombre': 'Calculadoras',
           'modalidad': 'intercambio',
           'precio': null,
-          'estado': 'disponible',
+          'estado': 'reservado',
           'fotos': <dynamic>[rutaFoto1, rutaFoto2],
-          'usuarios': <String, dynamic>{'nombre_mostrar': 'Ana López'},
-          'categorias': <String, dynamic>{'nombre': 'Calculadoras'},
+          'created_at': '2026-10-13T18:00:00.123456+00:00',
+          'dueno_nombre': 'Ana López',
+          'dueno_foto_url': 'https://fotos/avatar.jpg',
+          'dueno_division_id': 11,
+          'dueno_division': 'Mecatrónica, Desarrollo de Software e Ingeniería Civil',
+          'dueno_carrera_id': 101,
+          'dueno_carrera': 'Ingeniería en Desarrollo y Gestión de Software',
         },
         urlFoto: (ruta) => 'https://fotos/$ruta',
       );
 
       expect(modelo.portadaUrl, 'https://fotos/$rutaFoto1');
-      expect(modelo.duenoNombre, 'Ana López');
+      expect(modelo.fotosUrls, ['https://fotos/$rutaFoto1', 'https://fotos/$rutaFoto2']);
       expect(modelo.categoriaNombre, 'Calculadoras');
+      expect(modelo.duenoNombre, 'Ana López');
+      expect(modelo.duenoFotoUrl, 'https://fotos/avatar.jpg');
+      expect(modelo.duenoDivision, 'Mecatrónica, Desarrollo de Software e Ingeniería Civil');
+      expect(modelo.duenoCarrera, 'Ingeniería en Desarrollo y Gestión de Software');
+      expect(modelo.estado, const Reservado());
+      expect(modelo.creadaEn, DateTime.utc(2026, 10, 13, 18, 0, 0, 123, 456));
+      expect(modelo.esDe(idAlumno), isTrue);
+      expect(modelo.esDe('otro'), isFalse);
+      expect(modelo.esDe(null), isFalse);
     });
 
-    test('sin fotos, sin urlFoto o sin tablas unidas deja esos datos en null', () {
+    test('sin fotos, sin urlFoto o sin datos del dueño deja esos datos vacíos', () {
       const Map<String, dynamic> fila = <String, dynamic>{
         'id': 'pub-4',
         'usuario_id': idAlumno,
@@ -124,7 +140,7 @@ void main() {
         'modalidad': 'gratis',
         'estado': 'disponible',
         'fotos': <dynamic>[rutaFoto1],
-        'usuarios': null,
+        'dueno_nombre': null,
       };
 
       final PublicacionModel sinUrl = PublicacionModel.fromMap(fila);
@@ -134,9 +150,14 @@ void main() {
       final PublicacionModel sinFotos = PublicacionModel.fromMap(filaSinFotos, urlFoto: (r) => r);
 
       expect(sinUrl.portadaUrl, isNull);
+      expect(sinUrl.fotosUrls, isEmpty);
       expect(sinUrl.duenoNombre, isNull);
+      expect(sinUrl.duenoFotoUrl, isNull);
+      expect(sinUrl.duenoDivision, isNull);
+      expect(sinUrl.duenoCarrera, isNull);
       expect(sinUrl.categoriaNombre, isNull);
       expect(sinFotos.portadaUrl, isNull);
+      expect(sinFotos.fotosUrls, isEmpty);
     });
   });
 

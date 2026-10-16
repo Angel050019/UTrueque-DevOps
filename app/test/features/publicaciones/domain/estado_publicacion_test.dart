@@ -49,6 +49,21 @@ void main() {
       expect(EstadoPublicacion.desdeValor('vendido').etiqueta, 'Vendido');
       expect(() => EstadoPublicacion.desdeValor('perdido'), throwsArgumentError);
     });
+
+    test('HU-04 Escenario 9: Reservado y Vendido no permiten contactar y muestran su aviso', () {
+      expect(const Disponible().aceptaSolicitudes, isTrue);
+      expect(const Disponible().aviso, isNull);
+      expect(const Reservado().aceptaSolicitudes, isFalse);
+      expect(const Reservado().aviso, 'Este artículo está reservado: el dueño ya está en trato.');
+      expect(const Vendido().aceptaSolicitudes, isFalse);
+      expect(const Vendido().aviso, 'Este artículo ya fue vendido.');
+    });
+
+    test('HU-04: solo las Vendidas salen del Feed', () {
+      expect(const Disponible().visibleEnFeed, isTrue);
+      expect(const Reservado().visibleEnFeed, isTrue);
+      expect(const Vendido().visibleEnFeed, isFalse);
+    });
   });
 
   group('Modalidad', () {

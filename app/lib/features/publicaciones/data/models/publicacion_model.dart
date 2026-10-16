@@ -19,19 +19,28 @@ class PublicacionModel extends Publicacion {
     super.portadaUrl,
     super.duenoNombre,
     super.categoriaNombre,
+    super.fotosUrls,
+    super.duenoFotoUrl,
+    super.duenoDivision,
+    super.duenoCarrera,
   });
 
   /// Columnas que se piden a Supabase.
   static const String columnasSelect = 'id, usuario_id, titulo, descripcion, categoria_id, '
       'modalidad, precio, estado, fotos, created_at';
 
-  /// Columnas para el Feed: además trae el nombre del dueño y de la
-  /// categoría (PostgREST las une por sus llaves foráneas).
-  static const String columnasFeed =
-      '$columnasSelect, usuarios(nombre_mostrar), categorias(nombre)';
+  /// HU-04: vista de la base con la publicación, su categoría y el perfil
+  /// público del dueño (la usan el Feed y el Detalle).
+  static const String vistaDetalle = 'publicaciones_detalle';
 
-  /// [urlFoto] convierte la ruta de la portada en su URL pública; si no se
-  /// pasa, `portadaUrl` queda en `null`.
+  /// HU-04: función de la base que entrega el Feed por páginas.
+  static const String funcionFeed = 'feed_publicaciones';
+
+  /// Convierte una fila de `publicaciones` o de la vista
+  /// `publicaciones_detalle` en [Publicacion].
+  ///
+  /// [urlFoto] convierte cada ruta del bucket en su URL pública; si no se
+  /// pasa, `portadaUrl` queda en `null` y `fotosUrls` vacía.
   factory PublicacionModel.fromMap(
     Map<String, dynamic> mapa, {
     String Function(String ruta)? urlFoto,
@@ -40,6 +49,8 @@ class PublicacionModel extends Publicacion {
     final List<String> fotos = ((mapa['fotos'] as List<dynamic>?) ?? const <dynamic>[])
         .cast<String>()
         .toList(growable: false);
+    final List<String> fotosUrls =
+        urlFoto == null ? const <String>[] : fotos.map(urlFoto).toList(growable: false);
     return PublicacionModel(
       id: mapa['id'] as String,
       usuarioId: mapa['usuario_id'] as String,
@@ -52,9 +63,14 @@ class PublicacionModel extends Publicacion {
       estado: EstadoPublicacion.desdeValor(mapa['estado'] as String),
       fotos: fotos,
       creadaEn: creada == null ? null : DateTime.parse(creada),
-      portadaUrl: urlFoto == null || fotos.isEmpty ? null : urlFoto(fotos.first),
-      duenoNombre: _textoAnidado(mapa['usuarios'], 'nombre_mostrar'),
-      categoriaNombre: _textoAnidado(mapa['categorias'], 'nombre'),
+      portadaUrl: fotosUrls.isEmpty ? null : fotosUrls.first,
+      fotosUrls: fotosUrls,
+      // Columnas de la vista publicaciones_detalle (HU-04).
+      categoriaNombre: mapa['categoria_nombre'] as String?,
+      duenoNombre: mapa['dueno_nombre'] as String?,
+      duenoFotoUrl: mapa['dueno_foto_url'] as String?,
+      duenoDivision: mapa['dueno_division'] as String?,
+      duenoCarrera: mapa['dueno_carrera'] as String?,
     );
   }
 
@@ -78,12 +94,6 @@ class PublicacionModel extends Publicacion {
       'precio': modalidad.requierePrecio ? precio : null,
       'fotos': fotos,
     };
-  }
-
-  /// Lee `{campo: valor}` de una tabla unida; `null` si no vino.
-  static String? _textoAnidado(Object? anidado, String campo) {
-    if (anidado is Map<String, dynamic>) return anidado[campo] as String?;
-    return null;
   }
 
   static double? _leerNumero(Object? valor) {

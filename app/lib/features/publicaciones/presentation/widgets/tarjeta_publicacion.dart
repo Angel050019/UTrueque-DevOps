@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/formato_precio.dart';
-import '../../domain/entities/estado_publicacion.dart';
 import '../../domain/entities/modalidad.dart';
 import '../../domain/entities/publicacion.dart';
 import '../publicacion_keys.dart';
+import 'etiqueta_publicacion.dart';
 
 /// Tarjeta de una publicación en el Feed: portada a la izquierda y, a la
 /// derecha, título, categoría, dueño, modalidad (o precio) y estado.
@@ -16,7 +16,7 @@ class TarjetaPublicacion extends StatelessWidget {
 
   final Publicacion publicacion;
 
-  /// Qué pasa al tocar la tarjeta (por ahora abre "En desarrollo").
+  /// Qué pasa al tocar la tarjeta (HU-04: abre el Detalle).
   final VoidCallback? onTap;
 
   String get _textoModalidad {
@@ -81,23 +81,12 @@ class TarjetaPublicacion extends StatelessWidget {
                       spacing: 6,
                       runSpacing: 4,
                       children: [
-                        _Etiqueta(
+                        EtiquetaPublicacion(
                           texto: _textoModalidad,
                           fondo: AppColores.primario,
                           color: AppColores.sobrePrimario,
                         ),
-                        if (publicacion.estado is! Disponible)
-                          _Etiqueta(
-                            texto: publicacion.estado.etiqueta,
-                            fondo: AppColores.errorSuave,
-                            color: AppColores.error,
-                          )
-                        else
-                          const _Etiqueta(
-                            texto: 'Disponible',
-                            fondo: AppColores.acentoSuave,
-                            color: AppColores.primario,
-                          ),
+                        EtiquetaPublicacion.estado(publicacion.estado),
                       ],
                     ),
                   ],
@@ -130,23 +119,6 @@ class _Portada extends StatelessWidget {
       errorBuilder: (context, error, stackTrace) => sinFoto,
       loadingBuilder: (context, child, progreso) =>
           progreso == null ? child : const ColoredBox(color: AppColores.primarioSuave),
-    );
-  }
-}
-
-class _Etiqueta extends StatelessWidget {
-  const _Etiqueta({required this.texto, required this.fondo, required this.color});
-
-  final String texto;
-  final Color fondo;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-      decoration: BoxDecoration(color: fondo, borderRadius: BorderRadius.circular(999)),
-      child: Text(texto, style: AppTexto.cuerpo(size: 12, color: color, peso: FontWeight.w600)),
     );
   }
 }
