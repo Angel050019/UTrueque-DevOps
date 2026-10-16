@@ -10,6 +10,11 @@ class FeedKeys {
 
   static const Key publicarBoton = Key('feed_publicar_boton');
   static const Key miPerfilBoton = Key('feed_mi_perfil_boton');
+
+  /// Buscador y filtros (funcionan hasta el Sprint 5, HU-05). Por ahora al
+  /// tocarlos se muestra un aviso de que llegan pronto.
+  static const Key buscador = Key('feed_buscador');
+  static Key filtro(String texto) => Key('feed_filtro_$texto');
   static const Key lista = Key('feed_publicaciones_lista');
   static const Key vacio = Key('feed_publicaciones_vacio');
   static const Key cargando = Key('feed_publicaciones_cargando');

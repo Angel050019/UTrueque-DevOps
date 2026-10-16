@@ -26,7 +26,7 @@ Un estudiante con sesión iniciada **ve en el Feed las publicaciones de sus comp
 
 **Fuera del alcance (para que no se cuele trabajo de otros sprints):**
 
-- Búsqueda y filtros por categoría, división y carrera → **Sprint 5 (HU-05, issue #5)**. El buscador y los filtros del Feed siguen visibles pero sin funcionar.
+- Búsqueda y filtros por categoría, división y carrera → **Sprint 5 (HU-05, issue #5)**. El buscador y los filtros del Feed siguen visibles; al tocarlos aparece el aviso "La búsqueda y los filtros estarán listos en el Sprint 5", para que no parezca que la app no responde.
 - Editar, borrar o cambiar el estado de mis publicaciones → **Sprint 6 (HU-06, issue #1)**.
 - Contactar al dueño → **Sprint 7 (HU-07, chat)**. El botón existe pero abre "En desarrollo".
 

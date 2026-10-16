@@ -31,6 +31,12 @@ import '../feed_keys.dart';
 class FeedPage extends StatefulWidget {
   const FeedPage({super.key});
 
+  /// Aviso al tocar el buscador o un filtro mientras llega el Sprint 5, para
+  /// que no parezca que la app no responde.
+  static const String mensajeProximamente =
+      'La búsqueda y los filtros estarán listos en el Sprint 5. '
+      'Por ahora puedes ver todas las publicaciones aquí abajo.';
+
   @override
   State<FeedPage> createState() => _FeedPageState();
 }
@@ -59,6 +65,11 @@ class _FeedPageState extends State<FeedPage> {
     } finally {
       if (mounted) setState(() => _cargado = true);
     }
+  }
+
+  /// Buscador y filtros todavía sin funcionar (HU-05, Sprint 5).
+  void _avisarProximamente() {
+    mostrarMensaje(context, FeedPage.mensajeProximamente, icono: Icons.schedule_rounded);
   }
 
   Future<void> _irAMiPerfil() async {
@@ -115,24 +126,39 @@ class _FeedPageState extends State<FeedPage> {
                 ],
               ),
               const SizedBox(height: 20),
-              // TODO(diseño): buscador. Funciona hasta el Sprint 5 (HU-05).
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  color: AppColores.superficie,
+              // TODO(diseño): buscador. Funciona hasta el Sprint 5 (HU-05);
+              // por ahora al tocarlo avisa que llega pronto.
+              Material(
+                color: AppColores.superficie,
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(AppMedidas.radioBoton),
-                  border: Border.all(color: AppColores.borde),
+                  side: const BorderSide(color: AppColores.borde),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.search_rounded, color: AppColores.textoSecundario),
-                    const SizedBox(width: 10),
-                    Text('Busca libros, calculadoras, batas…', style: AppTexto.cuerpo()),
-                  ],
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  key: FeedKeys.buscador,
+                  onTap: _avisarProximamente,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.search_rounded, color: AppColores.textoSecundario),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Busca libros, calculadoras, batas…',
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTexto.cuerpo(),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: 14),
-              // TODO(diseño): filtros. Funcionan hasta el Sprint 5 (HU-05).
+              // TODO(diseño): filtros. Funcionan hasta el Sprint 5 (HU-05);
+              // por ahora al tocarlos avisan que llegan pronto.
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -140,7 +166,12 @@ class _FeedPageState extends State<FeedPage> {
                     for (final String filtro in _filtros)
                       Padding(
                         padding: const EdgeInsets.only(right: 8),
-                        child: _Filtro(texto: filtro, activo: filtro == _filtros.first),
+                        child: _Filtro(
+                          key: FeedKeys.filtro(filtro),
+                          texto: filtro,
+                          activo: filtro == _filtros.first,
+                          onTap: _avisarProximamente,
+                        ),
                       ),
                   ],
                 ),
@@ -169,26 +200,37 @@ class _FeedPageState extends State<FeedPage> {
 }
 
 class _Filtro extends StatelessWidget {
-  const _Filtro({required this.texto, required this.activo});
+  const _Filtro({
+    super.key,
+    required this.texto,
+    required this.activo,
+    required this.onTap,
+  });
 
   final String texto;
   final bool activo;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: activo ? AppColores.primario : AppColores.superficie,
-        borderRadius: BorderRadius.circular(999),
-        border: activo ? null : Border.all(color: AppColores.borde),
+    return Material(
+      color: activo ? AppColores.primario : AppColores.superficie,
+      shape: StadiumBorder(
+        side: activo ? BorderSide.none : const BorderSide(color: AppColores.borde),
       ),
-      child: Text(
-        texto,
-        style: AppTexto.cuerpo(
-          size: 13,
-          peso: FontWeight.w500,
-          color: activo ? AppColores.sobrePrimario : AppColores.texto,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Text(
+            texto,
+            style: AppTexto.cuerpo(
+              size: 13,
+              peso: FontWeight.w500,
+              color: activo ? AppColores.sobrePrimario : AppColores.texto,
+            ),
+          ),
         ),
       ),
     );

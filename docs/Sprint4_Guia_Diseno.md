@@ -16,7 +16,7 @@ El Feed y el Detalle de la publicación ya funcionan y usan la paleta del logo y
 
 Todas las rutas de archivo son relativas a `app/lib/`.
 
-**Feed, de arriba hacia abajo:** saludo y avatar (abre "Mi perfil") → buscador → filtros → "Publicaciones recientes" → lista de tarjetas → al final de la lista: spinner (cargando más), "Ya viste todas las publicaciones." o error con "Reintentar". Botón flotante "Publicar". El buscador y los filtros **todavía no funcionan** (Sprint 5); puedes diseñarlos, pero no les agregues lógica.
+**Feed, de arriba hacia abajo:** saludo y avatar (abre "Mi perfil") → buscador → filtros → "Publicaciones recientes" → lista de tarjetas → al final de la lista: spinner (cargando más), "Ya viste todas las publicaciones." o error con "Reintentar". Botón flotante "Publicar". El buscador y los filtros **todavía no funcionan** (Sprint 5): al tocarlos aparece un aviso de que llegan en el Sprint 5. Puedes diseñarlos, pero no les agregues lógica y conserva el `onTap: _avisarProximamente`.
 
 **Detalle, de arriba hacia abajo:** barra con regreso → carrusel de fotos con indicador "1 de N" → etiquetas (categoría, estado y "Es tu publicación") → título → precio o modalidad → aviso si está Reservado o Vendido → "Publicado el 13 de octubre de 2026" → descripción → "Publicado por" (foto, nombre, carrera y división del dueño) → botón fijo abajo: "Contactar al vendedor" o, si es mía, "Gestionar publicación".
 
@@ -108,6 +108,8 @@ Si cambias un widget por otro, **pásale la misma Key** al nuevo. Así las prueb
 | :--- | :--- |
 | `publicarBoton` | Botón flotante "Publicar" |
 | `miPerfilBoton` | Avatar que abre "Mi perfil" |
+| `buscador` | Buscador (por ahora muestra el aviso del Sprint 5) |
+| `filtro('Todo')`, `filtro('Libros')`… | Cada filtro (por ahora muestran el aviso del Sprint 5) |
 | `lista` | La lista de publicaciones |
 | `cargando` | Indicador de la primera carga |
 | `vacio` | Pantalla de Feed vacío |
