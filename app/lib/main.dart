@@ -33,10 +33,10 @@ import 'features/perfil/presentation/pages/mi_perfil_page.dart';
 import 'features/publicaciones/data/datasources/publicacion_remote_datasource.dart';
 import 'features/publicaciones/data/repositories/publicacion_repository_impl.dart';
 import 'features/publicaciones/domain/repositories/publicacion_repository.dart';
+import 'features/publicaciones/domain/usecases/buscar_publicaciones.dart';
 import 'features/publicaciones/domain/usecases/crear_publicacion.dart';
 import 'features/publicaciones/domain/usecases/obtener_categorias.dart';
 import 'features/publicaciones/domain/usecases/obtener_detalle_publicacion.dart';
-import 'features/publicaciones/domain/usecases/obtener_feed.dart';
 import 'features/publicaciones/presentation/cubit/detalle_publicacion_cubit.dart';
 import 'features/publicaciones/presentation/cubit/publicacion_cubit.dart';
 import 'features/publicaciones/presentation/pages/detalle_publicacion_page.dart';
@@ -108,7 +108,13 @@ class UTruequeApp extends StatelessWidget {
             AppRoutes.confirmacionRegistro: (_) => const ConfirmacionRegistroPage(),
             // HU-04: Feed de publicaciones
             AppRoutes.feedPrincipal: (_) => BlocProvider(
-                  create: (_) => FeedCubit(ObtenerFeed(publicacionRepository, networkInfo))..cargar(),
+                  create: (_) => FeedCubit(
+                    buscarPublicaciones: BuscarPublicaciones(publicacionRepository, networkInfo),
+                    // HU-05: opciones de los filtros y "Mi carrera" por defecto.
+                    obtenerCategorias: ObtenerCategorias(publicacionRepository, networkInfo),
+                    obtenerCatalogo: ObtenerCatalogoAcademico(perfilRepository, networkInfo),
+                    obtenerPerfil: ObtenerPerfil(perfilRepository, networkInfo),
+                  )..cargar(),
                   child: const FeedPage(),
                 ),
             // HU-02: Perfil Académico

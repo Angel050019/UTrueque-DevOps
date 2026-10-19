@@ -1,4 +1,5 @@
 import '../entities/categoria.dart';
+import '../entities/filtros_feed.dart';
 import '../entities/foto_articulo.dart';
 import '../entities/modalidad.dart';
 import '../entities/pagina_feed.dart';
@@ -8,10 +9,15 @@ import '../entities/publicacion.dart';
 /// solo conocen esta interfaz, nunca a Supabase.
 /// Todos los métodos lanzan un `Failure` si algo sale mal.
 abstract class PublicacionRepository {
-  /// HU-04: una página del Feed. Publicaciones Disponibles o Reservadas, de
-  /// la más nueva a la más vieja, con su portada, dueño y categoría. Con
-  /// [despuesDe] trae las que siguen a ese cursor.
-  Future<PaginaFeed> obtenerFeed({CursorFeed? despuesDe, required int limite});
+  /// HU-04 y HU-05: una página del Feed. Publicaciones Disponibles o
+  /// Reservadas, de la más nueva a la más vieja, con su portada, dueño y
+  /// categoría, que cumplen todos los [filtros] (texto, categoría, división
+  /// y carrera del dueño). Con [despuesDe] trae las que siguen a ese cursor.
+  Future<PaginaFeed> buscarPublicaciones({
+    FiltrosFeed filtros = const FiltrosFeed(),
+    CursorFeed? despuesDe,
+    required int limite,
+  });
 
   /// HU-04: detalle de una publicación con todas sus fotos y el perfil
   /// público del dueño. Lanza `PublicacionNoEncontradaFailure` si ya no

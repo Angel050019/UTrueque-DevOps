@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/utils/formato_imagen.dart';
+import '../../domain/entities/filtros_feed.dart';
 import '../../domain/entities/foto_articulo.dart';
 import '../../domain/entities/modalidad.dart';
 import '../../domain/entities/pagina_feed.dart';
@@ -13,7 +14,11 @@ import '../models/publicacion_model.dart';
 /// feature que importa `supabase_flutter`; traduce sus excepciones a
 /// [Failure]s con mensajes en español que no revelan detalles internos.
 abstract class PublicacionRemoteDataSource {
-  Future<PaginaFeed> obtenerFeed({CursorFeed? despuesDe, required int limite});
+  Future<PaginaFeed> buscarPublicaciones({
+    FiltrosFeed filtros = const FiltrosFeed(),
+    CursorFeed? despuesDe,
+    required int limite,
+  });
   Future<PublicacionModel> obtenerDetalle(String id);
   Future<List<CategoriaModel>> obtenerCategorias();
   Future<String> subirFoto(FotoArticulo foto);
@@ -46,20 +51,32 @@ class PublicacionRemoteDataSourceImpl implements PublicacionRemoteDataSource {
 
   StorageFileApi get _bucket => _client.storage.from(AppConstants.bucketPublicaciones);
 
-  /// HU-04: una página del Feed con la función `feed_publicaciones`
-  /// (`POST /rest/v1/rpc/feed_publicaciones`). La base ya filtra las
-  /// Vendidas, ordena de la más nueva a la más vieja y une la categoría y
-  /// el perfil público del dueño.
+  /// HU-04 y HU-05: una página del Feed con la función
+  /// `buscar_publicaciones` (`POST /rest/v1/rpc/buscar_publicaciones`). La
+  /// base ya filtra las Vendidas, aplica la búsqueda y los filtros, ordena
+  /// de la más nueva a la más vieja y une la categoría y el perfil público
+  /// del dueño. Solo se mandan los filtros que están puestos.
   @override
-  Future<PaginaFeed> obtenerFeed({CursorFeed? despuesDe, required int limite}) async {
+  Future<PaginaFeed> buscarPublicaciones({
+    FiltrosFeed filtros = const FiltrosFeed(),
+    CursorFeed? despuesDe,
+    required int limite,
+  }) async {
     // Si no hay sesión, no tiene caso llamar al API (el Feed es solo para
     // estudiantes autenticados).
     if (_client.auth.currentUser == null) throw const SesionNoIniciadaFailure();
+    // SEGURIDAD: validación de entrada. Sin espacios de más y máximo 100
+    // caracteres (la base vuelve a recortar y quita los signos).
+    final String texto = FiltrosFeed.normalizarTexto(filtros.texto);
     try {
       final List<dynamic> respuesta = await _client.rpc<List<dynamic>>(
-        PublicacionModel.funcionFeed,
+        PublicacionModel.funcionBuscar,
         params: <String, dynamic>{
           'p_limite': limite,
+          if (texto.isNotEmpty) 'p_texto': texto,
+          if (filtros.categoriaId != null) 'p_categoria_id': filtros.categoriaId,
+          if (filtros.divisionId != null) 'p_division_id': filtros.divisionId,
+          if (filtros.carreraId != null) 'p_carrera_id': filtros.carreraId,
           if (despuesDe != null) 'p_antes_de': despuesDe.fecha,
           if (despuesDe != null) 'p_antes_id': despuesDe.id,
         },

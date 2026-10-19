@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/routes/app_routes.dart';
@@ -11,38 +12,38 @@ import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../../perfil/domain/entities/perfil.dart';
 import '../../../perfil/domain/repositories/perfil_repository.dart';
 import '../../../perfil/presentation/widgets/avatar_perfil.dart';
+import '../../../publicaciones/domain/entities/categoria.dart';
+import '../../../publicaciones/domain/entities/filtros_feed.dart';
 import '../../../publicaciones/domain/entities/publicacion.dart';
 import '../../../publicaciones/presentation/pages/detalle_publicacion_page.dart';
 import '../../../publicaciones/presentation/widgets/tarjeta_publicacion.dart';
 import '../cubit/feed_cubit.dart';
 import '../cubit/feed_state.dart';
+import '../cubit/opciones_filtro.dart';
 import '../feed_keys.dart';
+import '../widgets/hoja_filtros.dart';
 
-/// Feed principal (HU-04).
+/// Feed principal (HU-04) con búsqueda y filtros (HU-05).
 ///
-/// Arriba: saludo, acceso a "Mi perfil", buscador y filtros (estos dos
-/// todavía sin funcionar: llegan en el Sprint 5, HU-05). Abajo: la lista
+/// Arriba: saludo, acceso a "Mi perfil", buscador, botón de filtros de
+/// división y carrera, y chips ("Mi carrera" y categorías). Abajo: la lista
 /// de publicaciones con scroll infinito, "jalar para actualizar" y sus
-/// estados de carga, vacío, error y sin conexión. Al tocar una tarjeta se
-/// abre su detalle.
+/// estados de carga, vacío, sin resultados, error y sin conexión. Al tocar
+/// una tarjeta se abre su detalle.
 ///
 /// Solo dibuja el estado del [FeedCubit]; la lógica vive en el Cubit y en
 /// los casos de uso.
 class FeedPage extends StatefulWidget {
   const FeedPage({super.key});
 
-  /// Aviso al tocar el buscador o un filtro mientras llega el Sprint 5, para
-  /// que no parezca que la app no responde.
-  static const String mensajeProximamente =
-      'La búsqueda y los filtros estarán listos en el Sprint 5. '
-      'Por ahora puedes ver todas las publicaciones aquí abajo.';
-
   @override
   State<FeedPage> createState() => _FeedPageState();
 }
 
 class _FeedPageState extends State<FeedPage> {
-  static const List<String> _filtros = ['Todo', 'Libros', 'Calculadoras', 'Batas'];
+  /// Texto del buscador (es parte de la pantalla; el Cubit decide cuándo
+  /// buscar).
+  final TextEditingController _busqueda = TextEditingController();
 
   /// Perfil del estudiante (nombre y foto). Mientras carga es null.
   Perfil? _perfil;
@@ -56,6 +57,12 @@ class _FeedPageState extends State<FeedPage> {
     _cargarPerfil();
   }
 
+  @override
+  void dispose() {
+    _busqueda.dispose();
+    super.dispose();
+  }
+
   Future<void> _cargarPerfil() async {
     try {
       final Perfil perfil = await context.read<PerfilRepository>().obtenerPerfilPropio();
@@ -67,21 +74,28 @@ class _FeedPageState extends State<FeedPage> {
     }
   }
 
-  /// Buscador y filtros todavía sin funcionar (HU-05, Sprint 5).
-  void _avisarProximamente() {
-    mostrarMensaje(context, FeedPage.mensajeProximamente, icono: Icons.schedule_rounded);
-  }
-
   Future<void> _irAMiPerfil() async {
     await Navigator.of(context).pushNamed(AppRoutes.miPerfil);
     // Al regresar se recarga por si el estudiante editó su nombre o foto.
     await _cargarPerfil();
   }
 
+  /// "Limpiar filtros" (HU-05, Escenario 7): también borra el buscador.
+  void _limpiarFiltros() {
+    _busqueda.clear();
+    context.read<FeedCubit>().limpiarFiltros();
+  }
+
+  void _borrarBusqueda() {
+    _busqueda.clear();
+    context.read<FeedCubit>().buscarAhora('');
+  }
+
   @override
   Widget build(BuildContext context) {
     final Usuario? usuario = context.read<AuthRepository>().usuarioActual;
     final String nombre = _primerNombre(_perfil?.nombreMostrar, usuario);
+    final FeedCubit cubit = context.read<FeedCubit>();
 
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
@@ -126,60 +140,67 @@ class _FeedPageState extends State<FeedPage> {
                 ],
               ),
               const SizedBox(height: 20),
-              // TODO(diseño): buscador. Funciona hasta el Sprint 5 (HU-05);
-              // por ahora al tocarlo avisa que llega pronto.
-              Material(
-                color: AppColores.superficie,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppMedidas.radioBoton),
-                  side: const BorderSide(color: AppColores.borde),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  key: FeedKeys.buscador,
-                  onTap: _avisarProximamente,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.search_rounded, color: AppColores.textoSecundario),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'Busca libros, calculadoras, batas…',
-                            overflow: TextOverflow.ellipsis,
-                            style: AppTexto.cuerpo(),
-                          ),
-                        ),
-                      ],
+              // TODO(diseño): buscador y botón de filtros (HU-05).
+              Row(
+                children: [
+                  Expanded(
+                    child: _Buscador(
+                      controller: _busqueda,
+                      onChanged: cubit.escribirBusqueda,
+                      onSubmitted: cubit.buscarAhora,
+                      onBorrar: _borrarBusqueda,
                     ),
                   ),
-                ),
+                  const SizedBox(width: 10),
+                  BlocBuilder<FeedCubit, FeedState>(
+                    buildWhen: (anterior, actual) =>
+                        anterior.filtros.filtraPorDivisionOCarrera !=
+                        actual.filtros.filtraPorDivisionOCarrera,
+                    builder: (context, state) => _BotonFiltros(
+                      activo: state.filtros.filtraPorDivisionOCarrera,
+                      onTap: () => mostrarHojaFiltros(context),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 14),
-              // TODO(diseño): filtros. Funcionan hasta el Sprint 5 (HU-05);
-              // por ahora al tocarlos avisan que llegan pronto.
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
+              // TODO(diseño): chips de "Mi carrera" y categorías (HU-05).
+              BlocBuilder<FeedCubit, FeedState>(
+                buildWhen: (anterior, actual) =>
+                    anterior.filtros != actual.filtros || anterior.opciones != actual.opciones,
+                builder: (context, state) => _ChipsFiltros(
+                  filtros: state.filtros,
+                  opciones: state.opciones,
+                  miCarreraActiva: cubit.miCarreraActiva,
+                  onMiCarrera: cubit.alternarMiCarrera,
+                  onCategoria: cubit.elegirCategoria,
+                  onQuitarDivisionYCarrera: () => cubit.aplicarDivisionYCarrera(),
+                ),
+              ),
+              const SizedBox(height: 12),
+              BlocBuilder<FeedCubit, FeedState>(
+                buildWhen: (anterior, actual) =>
+                    anterior.filtros.hayFiltros != actual.filtros.hayFiltros,
+                builder: (context, state) => Row(
                   children: [
-                    for (final String filtro in _filtros)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: _Filtro(
-                          key: FeedKeys.filtro(filtro),
-                          texto: filtro,
-                          activo: filtro == _filtros.first,
-                          onTap: _avisarProximamente,
-                        ),
+                    Expanded(
+                      child: Text(
+                        state.filtros.hayFiltros ? 'Resultados' : 'Publicaciones recientes',
+                        style: AppTexto.subtitulo(size: 17),
+                      ),
+                    ),
+                    if (state.filtros.hayFiltros)
+                      TextButton(
+                        key: FeedKeys.limpiarFiltrosBoton,
+                        onPressed: _limpiarFiltros,
+                        style: TextButton.styleFrom(foregroundColor: AppColores.primario),
+                        child: const Text('Limpiar filtros'),
                       ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              Text('Publicaciones recientes', style: AppTexto.subtitulo(size: 17)),
-              const SizedBox(height: 10),
-              const Expanded(child: _ListaFeed()),
+              const SizedBox(height: 6),
+              Expanded(child: _ListaFeed(onLimpiarFiltros: _limpiarFiltros)),
             ],
           ),
         ),
@@ -199,36 +220,92 @@ class _FeedPageState extends State<FeedPage> {
   }
 }
 
-class _Filtro extends StatelessWidget {
-  const _Filtro({
-    super.key,
-    required this.texto,
-    required this.activo,
-    required this.onTap,
+/// Buscador por palabras (HU-05, Escenario 2). Busca solo al dejar de
+/// escribir (eso lo decide el Cubit) o al presionar "buscar" en el teclado.
+class _Buscador extends StatelessWidget {
+  const _Buscador({
+    required this.controller,
+    required this.onChanged,
+    required this.onSubmitted,
+    required this.onBorrar,
   });
 
-  final String texto;
+  final TextEditingController controller;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<String> onSubmitted;
+  final VoidCallback onBorrar;
+
+  @override
+  Widget build(BuildContext context) {
+    final OutlineInputBorder borde = OutlineInputBorder(
+      borderRadius: BorderRadius.circular(AppMedidas.radioBoton),
+      borderSide: const BorderSide(color: AppColores.borde),
+    );
+    return TextField(
+      key: FeedKeys.buscador,
+      controller: controller,
+      onChanged: onChanged,
+      onSubmitted: onSubmitted,
+      textInputAction: TextInputAction.search,
+      // SEGURIDAD: validación de entrada (la base también lo recorta).
+      inputFormatters: [LengthLimitingTextInputFormatter(FiltrosFeed.maximoCaracteres)],
+      style: AppTexto.cuerpo(color: AppColores.texto),
+      decoration: InputDecoration(
+        hintText: 'Busca libros, calculadoras, batas…',
+        hintStyle: AppTexto.cuerpo(),
+        filled: true,
+        fillColor: AppColores.superficie,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        prefixIcon: const Icon(Icons.search_rounded, color: AppColores.textoSecundario),
+        suffixIcon: ValueListenableBuilder<TextEditingValue>(
+          valueListenable: controller,
+          builder: (context, valor, _) => valor.text.isEmpty
+              ? const SizedBox.shrink()
+              : IconButton(
+                  key: FeedKeys.borrarBusquedaBoton,
+                  tooltip: 'Borrar búsqueda',
+                  icon: const Icon(Icons.close_rounded, color: AppColores.textoSecundario),
+                  onPressed: onBorrar,
+                ),
+        ),
+        border: borde,
+        enabledBorder: borde,
+        focusedBorder: borde.copyWith(
+          borderSide: const BorderSide(color: AppColores.primario, width: 1.5),
+        ),
+      ),
+    );
+  }
+}
+
+/// Botón que abre la hoja de filtros de división y carrera. Se marca en
+/// azul cuando hay uno de esos filtros puesto.
+class _BotonFiltros extends StatelessWidget {
+  const _BotonFiltros({required this.activo, required this.onTap});
+
   final bool activo;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: activo ? AppColores.primario : AppColores.superficie,
-      shape: StadiumBorder(
-        side: activo ? BorderSide.none : const BorderSide(color: AppColores.borde),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Text(
-            texto,
-            style: AppTexto.cuerpo(
-              size: 13,
-              peso: FontWeight.w500,
-              color: activo ? AppColores.sobrePrimario : AppColores.texto,
+    return Tooltip(
+      message: 'Filtrar por división y carrera',
+      child: Material(
+        color: activo ? AppColores.primario : AppColores.superficie,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(AppMedidas.radioBoton),
+          side: activo ? BorderSide.none : const BorderSide(color: AppColores.borde),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: FeedKeys.filtrosBoton,
+          onTap: onTap,
+          child: SizedBox(
+            width: 50,
+            height: 50,
+            child: Icon(
+              Icons.tune_rounded,
+              color: activo ? AppColores.acento : AppColores.primario,
             ),
           ),
         ),
@@ -237,9 +314,135 @@ class _Filtro extends StatelessWidget {
   }
 }
 
-/// Lista del Feed con sus estados (HU-04, Escenarios 1 a 6).
+/// Chips de filtros: "Mi carrera" (si el perfil tiene carrera), la división
+/// o carrera elegida en la hoja (con su "x"), "Todo" y cada categoría.
+class _ChipsFiltros extends StatelessWidget {
+  const _ChipsFiltros({
+    required this.filtros,
+    required this.opciones,
+    required this.miCarreraActiva,
+    required this.onMiCarrera,
+    required this.onCategoria,
+    required this.onQuitarDivisionYCarrera,
+  });
+
+  final FiltrosFeed filtros;
+  final OpcionesFiltro opciones;
+  final bool miCarreraActiva;
+  final VoidCallback onMiCarrera;
+  final ValueChanged<int?> onCategoria;
+  final VoidCallback onQuitarDivisionYCarrera;
+
+  /// Texto del chip de división o carrera elegida en la hoja.
+  String? get _textoAcademico {
+    if (!filtros.filtraPorDivisionOCarrera || miCarreraActiva) return null;
+    final String? carrera = opciones.nombreCarrera(filtros.carreraId);
+    if (carrera != null) return carrera;
+    return opciones.nombreDivision(filtros.divisionId) ?? 'División y carrera';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String? textoAcademico = _textoAcademico;
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          if (opciones.miCarrera != null)
+            _Chip(
+              key: FeedKeys.miCarreraChip,
+              texto: 'Mi carrera',
+              icono: Icons.school_rounded,
+              activo: miCarreraActiva,
+              onTap: onMiCarrera,
+            ),
+          if (textoAcademico != null)
+            _Chip(
+              key: FeedKeys.filtroAcademicoChip,
+              texto: textoAcademico,
+              icono: Icons.close_rounded,
+              activo: true,
+              onTap: onQuitarDivisionYCarrera,
+            ),
+          _Chip(
+            key: FeedKeys.filtro('Todo'),
+            texto: 'Todo',
+            activo: filtros.categoriaId == null,
+            onTap: () => onCategoria(null),
+          ),
+          for (final Categoria categoria in opciones.categorias)
+            _Chip(
+              key: FeedKeys.filtro(categoria.nombre),
+              texto: categoria.nombre,
+              activo: filtros.categoriaId == categoria.id,
+              onTap: () => onCategoria(categoria.id),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({
+    super.key,
+    required this.texto,
+    required this.activo,
+    required this.onTap,
+    this.icono,
+  });
+
+  final String texto;
+  final bool activo;
+  final VoidCallback onTap;
+  final IconData? icono;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = activo ? AppColores.sobrePrimario : AppColores.texto;
+    final IconData? iconoChip = icono;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: activo ? AppColores.primario : AppColores.superficie,
+        shape: StadiumBorder(
+          side: activo ? BorderSide.none : const BorderSide(color: AppColores.borde),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (iconoChip != null) ...[
+                  Icon(iconoChip, size: 16, color: activo ? AppColores.acento : AppColores.primario),
+                  const SizedBox(width: 6),
+                ],
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 220),
+                  child: Text(
+                    texto,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTexto.cuerpo(size: 13, peso: FontWeight.w500, color: color),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Lista del Feed con sus estados (HU-04, Escenarios 1 a 6; HU-05,
+/// Escenarios 6, 8 y 9).
 class _ListaFeed extends StatelessWidget {
-  const _ListaFeed();
+  const _ListaFeed({required this.onLimpiarFiltros});
+
+  final VoidCallback onLimpiarFiltros;
 
   /// Cuando quedan menos de estos píxeles por recorrer se pide la
   /// siguiente página, así el estudiante casi nunca ve el spinner.
@@ -268,6 +471,9 @@ class _ListaFeed extends StatelessWidget {
         mostrarMensaje(context, aviso, esError: true);
         cubit.avisoMostrado();
       },
+      // Cambiar solo las opciones de los filtros no redibuja la lista.
+      buildWhen: (anterior, actual) =>
+          anterior.runtimeType != actual.runtimeType || anterior.conOpciones(actual.opciones) != actual,
       builder: (context, state) {
         if (state is FeedError) {
           return AvisoPantalla(
@@ -279,6 +485,24 @@ class _ListaFeed extends StatelessWidget {
               key: FeedKeys.reintentarBoton,
               texto: 'Reintentar',
               onPressed: cubit.cargar,
+            ),
+          );
+        }
+        if (state is FeedSinResultados) {
+          // TODO(diseño): ilustración de "sin resultados".
+          return RefreshIndicator(
+            color: AppColores.primario,
+            onRefresh: cubit.actualizar,
+            child: AvisoPantalla(
+              key: FeedKeys.sinResultados,
+              icono: Icons.search_off_rounded,
+              titulo: 'Sin resultados',
+              texto: FeedSinResultados.mensaje,
+              accion: PrimaryButton(
+                key: FeedKeys.limpiarFiltrosSinResultadosBoton,
+                texto: 'Limpiar filtros',
+                onPressed: onLimpiarFiltros,
+              ),
             ),
           );
         }
