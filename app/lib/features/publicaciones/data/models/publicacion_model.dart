@@ -33,8 +33,11 @@ class PublicacionModel extends Publicacion {
   /// público del dueño (la usan el Feed y el Detalle).
   static const String vistaDetalle = 'publicaciones_detalle';
 
-  /// HU-04: función de la base que entrega el Feed por páginas.
-  static const String funcionFeed = 'feed_publicaciones';
+  /// HU-05: función de la base que entrega el Feed por páginas, con
+  /// búsqueda y filtros (sin filtros es el mismo Feed de HU-04). La función
+  /// `feed_publicaciones` de HU-04 se conserva en la base solo para las
+  /// versiones anteriores de la app.
+  static const String funcionBuscar = 'buscar_publicaciones';
 
   /// Convierte una fila de `publicaciones` o de la vista
   /// `publicaciones_detalle` en [Publicacion].

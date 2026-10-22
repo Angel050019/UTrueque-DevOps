@@ -36,7 +36,8 @@ Por eso, "probar el API REST" significa comprobar que **la app envía las petici
 | Autenticación institucional (`@utsjr.edu.mx`) | HU-01 | **Automatizado (7 casos AAA)** |
 | Perfil (división y carrera) | HU-02 | Planeado — Sprint 2 |
 | Publicaciones y catálogo | HU-03 / HU-04 | HU-03: **Automatizado (10 casos AAA, CP-08 a CP-17)** — Sprint 3; HU-04 (Feed y Detalle): **Automatizado (10 casos AAA, CP-18 a CP-27)** — Sprint 4 |
-| Trueques y chat | HU-05+ | Planeado — Sprints 5-7 |
+| Búsqueda y filtros (división, carrera, categoría y palabras) | HU-05 (issue #5) | **Automatizado (8 casos AAA, CP-28 a CP-35)** — Sprint 5. Desde este sprint el Feed usa `POST /rest/v1/rpc/buscar_publicaciones`; CP-18 a CP-22 se actualizaron a esa función |
+| Mis publicaciones, chat y encuentros | HU-06+ | Planeado — Sprints 6-8 |
 
 ### 1.2 Estrategia: cómo se prueba el API sin depender de internet
 
@@ -460,3 +461,22 @@ La investigación completa está en el documento *Investigación Técnica: Tipos
 - **Pruebas sobre el código real:** los casos AAA ya no son ejemplos teóricos; prueban el registro y el inicio de sesión que usa la app y se ejecutan solos en cada Pull Request.
 - **El Quality Gate protege `main`:** si una prueba falla, la cobertura baja del 80 % o SonarQube detecta bugs o vulnerabilidades nuevas, el cambio no se integra.
 - **Siguiente paso:** al terminar HU-02 (perfil con división y carrera) se agregarán sus casos de API para `PATCH /rest/v1/usuarios` y las pruebas de RLS.
+
+---
+
+## ANEXO. CASOS DEL API REST DE HU-05 (SPRINT 5)
+
+Archivo: [`app/test/api/publicaciones_api_rest_test.dart`](../app/test/api/publicaciones_api_rest_test.dart) (grupo "API REST de búsqueda y filtros").
+
+| ID | Escenario (HU-05) | Endpoint | Respuesta simulada | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| CP-28 | Búsqueda con resultados | `POST /rest/v1/rpc/buscar_publicaciones` | 200 | Manda `p_texto` limpio y solo los filtros puestos; interpreta las publicaciones |
+| CP-29 | Búsqueda sin coincidencias | `POST /rest/v1/rpc/buscar_publicaciones` | 200 con `[]` | Página vacía, sin cursor (la app muestra "sin resultados") |
+| CP-30 | Filtros combinados con paginación | `POST /rest/v1/rpc/buscar_publicaciones` (2 veces) | 200 (20) / 200 (3) | La segunda página manda el cursor y los MISMOS filtros |
+| CP-31 | Solo categoría | `POST /rest/v1/rpc/buscar_publicaciones` | 200 | No manda `p_texto` ni filtros vacíos |
+| CP-32 | Error del servidor | `POST /rest/v1/rpc/buscar_publicaciones` | 500 | `CargarPublicacionesFailure` sin IP ni nombres internos |
+| CP-33 | Sin conexión | — | (ninguna) | `SinConexionFailure`, 0 peticiones al API |
+| CP-34 | Sin sesión | — | (ninguna) | `SesionNoIniciadaFailure`, 0 peticiones al API |
+| CP-35 | Texto vacío o muy largo | `POST /rest/v1/rpc/buscar_publicaciones` (2 veces) | 200 | Solo espacios no manda `p_texto`; más de 100 caracteres se recorta |
+
+Las reglas de la base (sin acentos, plural, prefijo, todas las palabras, paginación sin repetidas, `anon` sin permiso) se probaron con 18 casos SQL en Postgres 16 antes de entregar la migración `20261019120000_hu05_busqueda_filtros.sql`.

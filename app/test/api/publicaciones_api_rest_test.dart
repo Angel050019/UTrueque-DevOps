@@ -10,12 +10,18 @@
 // (`/rest/v1/...`) y a Storage (`/storage/v1/object/...`) y cómo interpreta
 // cada respuesta (200, 201, 400, 403, 413 y sin red).
 //
-// HU-04 (Feed de publicaciones) agrega CP-18 a CP-27: el Feed paginado con
-// la función `feed_publicaciones` (POST /rest/v1/rpc/...) y el Detalle con
-// la vista `publicaciones_detalle` (GET /rest/v1/publicaciones_detalle).
+// HU-04 (Feed de publicaciones) agrega CP-18 a CP-27: el Feed paginado y el
+// Detalle con la vista `publicaciones_detalle` (GET
+// /rest/v1/publicaciones_detalle). Desde HU-05 el Feed se pide a la función
+// `buscar_publicaciones` (POST /rest/v1/rpc/buscar_publicaciones), que sin
+// filtros regresa lo mismo que el Feed de HU-04.
 //
-// Ver docs/Plan_de_Pruebas.md, Sección 2, docs/Sprint3_Planning.md y
-// docs/Sprint4_Planning.md.
+// HU-05 (Búsqueda y filtros, issue #5) agrega CP-28 a CP-35: búsqueda con y
+// sin resultados, filtros combinados con paginación, 500, sin conexión y sin
+// sesión.
+//
+// Ver docs/Plan_de_Pruebas.md, Sección 2, y docs/Sprint3_Planning.md a
+// docs/Sprint5_Planning.md.
 
 import 'dart:convert';
 
@@ -29,14 +35,15 @@ import 'package:utrueque/features/publicaciones/data/datasources/publicacion_rem
 import 'package:utrueque/features/publicaciones/data/repositories/publicacion_repository_impl.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/categoria.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/estado_publicacion.dart';
+import 'package:utrueque/features/publicaciones/domain/entities/filtros_feed.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/modalidad.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/pagina_feed.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/publicacion.dart';
 import 'package:utrueque/features/publicaciones/domain/errors/publicacion_failures.dart';
+import 'package:utrueque/features/publicaciones/domain/usecases/buscar_publicaciones.dart';
 import 'package:utrueque/features/publicaciones/domain/usecases/crear_publicacion.dart';
 import 'package:utrueque/features/publicaciones/domain/usecases/obtener_categorias.dart';
 import 'package:utrueque/features/publicaciones/domain/usecases/obtener_detalle_publicacion.dart';
-import 'package:utrueque/features/publicaciones/domain/usecases/obtener_feed.dart';
 
 import '../features/publicaciones/fixtures.dart';
 
@@ -47,8 +54,8 @@ const String _tokenAcceso = 'token-de-acceso-de-pruebas';
 const String _rutaStorage = '/storage/v1/object/publicaciones';
 const String _rutaPublicaciones = '/rest/v1/publicaciones';
 
-// HU-04
-const String _rutaFeed = '/rest/v1/rpc/feed_publicaciones';
+// HU-04 y HU-05: el Feed (con o sin filtros) y el Detalle
+const String _rutaFeed = '/rest/v1/rpc/buscar_publicaciones';
 const String _rutaDetalle = '/rest/v1/publicaciones_detalle';
 
 /// Servidor HTTP simulado que imita las respuestas de Supabase y guarda cada
@@ -139,7 +146,7 @@ Map<String, dynamic> _cuerpoJson(http.Request peticion) =>
     jsonDecode(peticion.body) as Map<String, dynamic>;
 
 /// HU-04: fila de la vista `publicaciones_detalle` (la misma forma que
-/// regresa la función `feed_publicaciones`).
+/// regresa la función `buscar_publicaciones`).
 Map<String, dynamic> _filaVista(String id, {String fecha = '2026-10-13T18:00:00.123456+00:00'}) {
   return <String, dynamic>{
     'id': id,
@@ -505,14 +512,14 @@ void main() {
   });
 
   group('API REST del Feed y el Detalle (HU-04) — patrón AAA', () {
-    ObtenerFeed obtenerFeed({bool conectado = true}) =>
-        ObtenerFeed(repositorio, _RedSimulada(conectado: conectado));
+    BuscarPublicaciones obtenerFeed({bool conectado = true}) =>
+        BuscarPublicaciones(repositorio, _RedSimulada(conectado: conectado));
 
     ObtenerDetallePublicacion obtenerDetalle({bool conectado = true}) =>
         ObtenerDetallePublicacion(repositorio, _RedSimulada(conectado: conectado));
 
     test(
-        'CP-18 (Escenario 1): POST /rest/v1/rpc/feed_publicaciones responde 200 con las '
+        'CP-18 (Escenario 1): POST /rest/v1/rpc/buscar_publicaciones (sin filtros) responde 200 con las '
         'publicaciones, su dueño, su categoría y la URL pública de cada foto', () async {
       // ARRANGE
       api.cuando('POST', _rutaFeed, (_) => _json(200, <Map<String, dynamic>>[_filaVista('pub-1')]));
@@ -705,10 +712,175 @@ void main() {
           PublicacionRepositoryImpl(PublicacionRemoteDataSourceImpl(sinSesion));
 
       // ACT + ASSERT
-      await expectLater(repo.obtenerFeed(limite: 20), throwsA(isA<SesionNoIniciadaFailure>()));
+      await expectLater(repo.buscarPublicaciones(limite: 20), throwsA(isA<SesionNoIniciadaFailure>()));
       await expectLater(repo.obtenerDetalle('pub-1'), throwsA(isA<SesionNoIniciadaFailure>()));
       expect(api.peticionesDeLaApp, isEmpty);
       await sinSesion.dispose();
+    });
+  });
+
+  group('API REST de búsqueda y filtros (HU-05, issue #5) — patrón AAA', () {
+    BuscarPublicaciones buscar({bool conectado = true}) =>
+        BuscarPublicaciones(repositorio, _RedSimulada(conectado: conectado));
+
+    test(
+        'CP-28 (Escenario 2): la búsqueda manda p_texto a POST /rest/v1/rpc/buscar_publicaciones '
+        'y responde 200 con las coincidencias', () async {
+      // ARRANGE
+      api.cuando('POST', _rutaFeed, (_) => _json(200, <Map<String, dynamic>>[_filaVista('pub-1')]));
+      final FiltrosFeed filtros = const FiltrosFeed().conTexto('  calculadora   cientifica ');
+
+      // ACT
+      final PaginaFeed pagina = await buscar()(filtros: filtros);
+
+      // ASSERT: respuesta interpretada
+      expect(pagina.publicaciones.single.categoriaNombre, 'Calculadoras');
+      expect(pagina.hayMas, isFalse);
+
+      // ASSERT: petición enviada (texto limpio, sin filtros que no se pusieron)
+      final http.Request peticion = api.peticionesDeLaApp.single;
+      expect(peticion.method, 'POST');
+      expect(peticion.url.path, _rutaFeed);
+      expect(_cuerpoJson(peticion), <String, dynamic>{
+        'p_limite': 20,
+        'p_texto': 'calculadora cientifica',
+      });
+      expect(peticion.headers['Authorization'], 'Bearer $_tokenAcceso');
+    });
+
+    test('CP-29 (Escenario 6): una búsqueda sin coincidencias responde 200 con [] y no hay más',
+        () async {
+      // ARRANGE
+      api.cuando('POST', _rutaFeed, (_) => _json(200, <Map<String, dynamic>>[]));
+
+      // ACT
+      final PaginaFeed pagina =
+          await buscar()(filtros: const FiltrosFeed(texto: 'Calculadora Científica HP'));
+
+      // ASSERT
+      expect(pagina.publicaciones, isEmpty);
+      expect(pagina.hayMas, isFalse);
+      expect(_cuerpoJson(api.peticionesDeLaApp.single)['p_texto'], 'Calculadora Científica HP');
+    });
+
+    test(
+        'CP-30 (Escenarios 3 y 5): filtros combinados con paginación — la segunda página manda '
+        'el cursor y los MISMOS filtros', () async {
+      // ARRANGE: primera página completa (20) y luego 3 más.
+      int pedidas = 0;
+      api.cuando('POST', _rutaFeed, (_) => _json(200, ++pedidas == 1 ? _filasVista(20) : _filasVista(3)));
+      const FiltrosFeed filtros =
+          FiltrosFeed(texto: 'calculo', categoriaId: 1, divisionId: 11, carreraId: 102);
+
+      // ACT
+      final PaginaFeed primera = await buscar()(filtros: filtros);
+      final PaginaFeed segunda = await buscar()(filtros: filtros, despuesDe: primera.siguiente);
+
+      // ASSERT
+      expect(primera.hayMas, isTrue);
+      expect(segunda.publicaciones, hasLength(3));
+      expect(segunda.hayMas, isFalse);
+      final List<http.Request> peticiones = api.peticionesDeLaApp;
+      expect(peticiones, hasLength(2));
+      expect(_cuerpoJson(peticiones.first), <String, dynamic>{
+        'p_limite': 20,
+        'p_texto': 'calculo',
+        'p_categoria_id': 1,
+        'p_division_id': 11,
+        'p_carrera_id': 102,
+      });
+      expect(_cuerpoJson(peticiones.last), <String, dynamic>{
+        'p_limite': 20,
+        'p_texto': 'calculo',
+        'p_categoria_id': 1,
+        'p_division_id': 11,
+        'p_carrera_id': 102,
+        'p_antes_de': '2026-10-13T18:00:00.123456+00:00',
+        'p_antes_id': 'pub-19',
+      });
+    });
+
+    test('CP-31 (Escenario 4): solo con categoría no se manda p_texto ni filtros vacíos', () async {
+      // ARRANGE
+      api.cuando('POST', _rutaFeed, (_) => _json(200, <Map<String, dynamic>>[_filaVista('pub-1')]));
+
+      // ACT
+      await buscar()(filtros: const FiltrosFeed(categoriaId: 2));
+
+      // ASSERT
+      expect(_cuerpoJson(api.peticionesDeLaApp.single), <String, dynamic>{
+        'p_limite': 20,
+        'p_categoria_id': 2,
+      });
+    });
+
+    test('CP-32 (Escenario 9): si la búsqueda responde 500, el mensaje es genérico y sin detalles',
+        () async {
+      // ARRANGE
+      api.cuando('POST', _rutaFeed, (_) => _json(500, <String, dynamic>{
+            'code': 'XX000',
+            'message': 'function buscar_publicaciones failed at 10.0.0.8',
+          }));
+
+      // ACT + ASSERT
+      await expectLater(
+        buscar()(filtros: const FiltrosFeed(texto: 'libro', carreraId: 102)),
+        throwsA(isA<CargarPublicacionesFailure>()
+            .having((f) => f.mensaje, 'mensaje', 'No pudimos cargar las publicaciones. Inténtalo de nuevo.')
+            .having((f) => f.mensaje, 'sin IP', isNot(contains('10.0.0.8')))
+            .having((f) => f.mensaje, 'sin nombres internos', isNot(contains('buscar_publicaciones')))),
+      );
+    });
+
+    test('CP-33 (Escenario 8): sin conexión no se envía ninguna búsqueda', () async {
+      // ACT + ASSERT
+      await expectLater(
+        buscar(conectado: false)(filtros: const FiltrosFeed(texto: 'libro', categoriaId: 1)),
+        throwsA(isA<SinConexionFailure>()),
+      );
+      expect(api.peticionesDeLaApp, isEmpty);
+    });
+
+    test('CP-34: sin sesión no se envía ninguna búsqueda', () async {
+      // ARRANGE: un cliente que nunca inició sesión.
+      final SupabaseClient sinSesion = SupabaseClient(
+        _urlSupabase,
+        _anonKey,
+        httpClient: api.cliente,
+        authOptions: const AuthClientOptions(
+          autoRefreshToken: false,
+          authFlowType: AuthFlowType.implicit,
+        ),
+      );
+      final PublicacionRepositoryImpl repo =
+          PublicacionRepositoryImpl(PublicacionRemoteDataSourceImpl(sinSesion));
+
+      // ACT + ASSERT
+      await expectLater(
+        repo.buscarPublicaciones(filtros: const FiltrosFeed(texto: 'libro'), limite: 20),
+        throwsA(isA<SesionNoIniciadaFailure>()),
+      );
+      expect(api.peticionesDeLaApp, isEmpty);
+      await sinSesion.dispose();
+    });
+
+    test(
+        'CP-35: un texto de solo espacios no manda p_texto y uno de más de 100 caracteres se '
+        'recorta antes de enviarse', () async {
+      // ARRANGE
+      api.cuando('POST', _rutaFeed, (_) => _json(200, <Map<String, dynamic>>[]));
+      final String largo = 'libro ' * 30; // 180 caracteres
+
+      // ACT: el repositorio recibe los textos tal cual (sin pasar por conTexto).
+      await repositorio.buscarPublicaciones(filtros: const FiltrosFeed(texto: '    '), limite: 20);
+      await repositorio.buscarPublicaciones(filtros: FiltrosFeed(texto: largo), limite: 20);
+
+      // ASSERT
+      final List<http.Request> peticiones = api.peticionesDeLaApp;
+      expect(_cuerpoJson(peticiones.first), <String, dynamic>{'p_limite': 20});
+      final String enviado = _cuerpoJson(peticiones.last)['p_texto'] as String;
+      expect(enviado.length, lessThanOrEqualTo(FiltrosFeed.maximoCaracteres));
+      expect(enviado, startsWith('libro libro'));
     });
   });
 }

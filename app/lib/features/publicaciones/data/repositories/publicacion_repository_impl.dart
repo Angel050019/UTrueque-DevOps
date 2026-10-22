@@ -1,4 +1,5 @@
 import '../../domain/entities/categoria.dart';
+import '../../domain/entities/filtros_feed.dart';
 import '../../domain/entities/foto_articulo.dart';
 import '../../domain/entities/modalidad.dart';
 import '../../domain/entities/pagina_feed.dart';
@@ -13,8 +14,12 @@ class PublicacionRepositoryImpl implements PublicacionRepository {
   final PublicacionRemoteDataSource _remoteDataSource;
 
   @override
-  Future<PaginaFeed> obtenerFeed({CursorFeed? despuesDe, required int limite}) =>
-      _remoteDataSource.obtenerFeed(despuesDe: despuesDe, limite: limite);
+  Future<PaginaFeed> buscarPublicaciones({
+    FiltrosFeed filtros = const FiltrosFeed(),
+    CursorFeed? despuesDe,
+    required int limite,
+  }) =>
+      _remoteDataSource.buscarPublicaciones(filtros: filtros, despuesDe: despuesDe, limite: limite);
 
   @override
   Future<Publicacion> obtenerDetalle(String id) => _remoteDataSource.obtenerDetalle(id);
