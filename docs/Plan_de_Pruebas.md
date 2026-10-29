@@ -480,3 +480,26 @@ Archivo: [`app/test/api/publicaciones_api_rest_test.dart`](../app/test/api/publi
 | CP-35 | Texto vacío o muy largo | `POST /rest/v1/rpc/buscar_publicaciones` (2 veces) | 200 | Solo espacios no manda `p_texto`; más de 100 caracteres se recorta |
 
 Las reglas de la base (sin acentos, plural, prefijo, todas las palabras, paginación sin repetidas, `anon` sin permiso) se probaron con 18 casos SQL en Postgres 16 antes de entregar la migración `20261019120000_hu05_busqueda_filtros.sql`.
+
+---
+
+## ANEXO. CASOS DEL API REST DE HU-06 (SPRINT 6)
+
+Archivo: [`app/test/api/publicaciones_api_rest_test.dart`](../app/test/api/publicaciones_api_rest_test.dart) (grupo "API REST de 'Mis publicaciones'").
+
+| ID | Escenario (HU-06) | Endpoint | Respuesta simulada | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| CP-36 | Mis publicaciones activas | `POST /rest/v1/rpc/mis_publicaciones` | 200 | Solo manda `p_limite` (el dueño sale de la sesión); interpreta las publicaciones con su portada |
+| CP-37 | Finalizadas con paginación | `POST /rest/v1/rpc/mis_publicaciones` (2 veces) | 200 (20) / 200 (2) | Manda `p_finalizadas: true`; la segunda página manda el cursor |
+| CP-38 | Reservar | `PATCH /rest/v1/publicaciones?id=eq.<id>` + `GET /rest/v1/publicaciones_detalle` | 200 / 200 | El PATCH lleva SOLO `{"estado":"reservado"}`; regresa la publicación con categoría y dueño |
+| CP-39 | Transición rechazada por el servidor | `PATCH /rest/v1/publicaciones` | 400 (`23514`, pista `transicion_no_permitida`) | `AccionNoPermitidaFailure` sin detalles internos |
+| CP-40 | Editar | `PATCH /rest/v1/publicaciones` + `GET` detalle + `DELETE /storage/v1/object/publicaciones` | 200 / 200 / 200 | El PATCH no lleva dueño ni estado; se borra de Storage la foto que se quitó |
+| CP-41 | Editar una Reservada / saltarse la app | `PATCH /rest/v1/publicaciones` | 400 (pista `publicacion_no_editable`), 400 (`23514`) y 409 (`23503`) | `AccionNoPermitidaFailure`, `PublicacionRechazadaFailure` y error en la categoría; no se borra ninguna foto |
+| CP-42 | Borrar con sus fotos | `DELETE /rest/v1/publicaciones?id=eq.<id>&select=fotos` + `DELETE /storage/v1/object/publicaciones` | 200 / 200 | Primero la publicación y después sus fotos |
+| CP-43 | Publicación de otro estudiante | `PATCH` y `DELETE /rest/v1/publicaciones` | 200 con `[]` (RLS) y 403 (`42501`); 400 (`22P02`) | `ModificarSinPermisoFailure`; id inválido → "ya no está disponible"; no se borran fotos |
+| CP-44 | Error del servidor | `POST rpc/mis_publicaciones`, `PATCH` | 500 | Mensajes genéricos sin IP; si solo falla la segunda lectura, el cambio guardado se respeta |
+| CP-45 | Sin conexión | — | (ninguna) | `SinConexionFailure` al listar, cambiar estado, editar y borrar; 0 peticiones |
+| CP-46 | Sin sesión | — | (ninguna) | `SesionNoIniciadaFailure`, 0 peticiones al API |
+| CP-47 | Editar con foto nueva y guardado fallido | `POST /storage/v1/object/publicaciones/<uid>/…` + `PATCH` + `DELETE` Storage | 200 / 500 / 200 | Se sube solo la foto nueva y, como falló el guardado, se borra solo esa |
+
+Las reglas de la base (un estudiante no puede cambiar, editar ni borrar la publicación de otro ni sus fotos; solo una Disponible se edita o se borra; transiciones del patrón State; Finalizadas sin repetidas por páginas; `anon` sin permiso) se probaron con 42 casos SQL en Postgres 16 antes de entregar la migración `20261029120000_hu06_mis_publicaciones.sql`.
