@@ -39,6 +39,10 @@ class PublicacionModel extends Publicacion {
   /// versiones anteriores de la app.
   static const String funcionBuscar = 'buscar_publicaciones';
 
+  /// HU-06: función de la base con las publicaciones del estudiante con
+  /// sesión (Activas o Finalizadas), por páginas.
+  static const String funcionMisPublicaciones = 'mis_publicaciones';
+
   /// Convierte una fila de `publicaciones` o de la vista
   /// `publicaciones_detalle` en [Publicacion].
   ///
@@ -98,6 +102,30 @@ class PublicacionModel extends Publicacion {
       'fotos': fotos,
     };
   }
+
+  /// HU-06: datos que la app envía al editar una publicación. Son los
+  /// mismos campos que al crear; tampoco incluye `usuario_id` ni `estado`.
+  static Map<String, dynamic> paraEditar({
+    required String titulo,
+    required String descripcion,
+    required int categoriaId,
+    required Modalidad modalidad,
+    required double? precio,
+    required List<String> fotos,
+  }) =>
+      paraCrear(
+        titulo: titulo,
+        descripcion: descripcion,
+        categoriaId: categoriaId,
+        modalidad: modalidad,
+        precio: precio,
+        fotos: fotos,
+      );
+
+  /// HU-06: al cambiar de estado se manda SOLO el estado nuevo. El servidor
+  /// revisa que la transición sea válida (patrón State).
+  static Map<String, dynamic> paraCambiarEstado(EstadoPublicacion estado) =>
+      <String, dynamic>{'estado': estado.valor};
 
   static double? _leerNumero(Object? valor) {
     if (valor == null) return null;

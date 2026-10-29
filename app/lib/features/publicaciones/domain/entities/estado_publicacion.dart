@@ -2,6 +2,19 @@ import 'package:equatable/equatable.dart';
 
 import '../errors/publicacion_failures.dart';
 
+/// HU-06: cambios de estado que el dueño puede pedir desde "Gestionar
+/// publicación". Cada estado decide cuáles acepta ([EstadoPublicacion.acciones]).
+enum AccionEstado {
+  reservar('Marcar como Reservado'),
+  liberar('Volver a Disponible'),
+  marcarVendido('Marcar como Vendido');
+
+  const AccionEstado(this.etiqueta);
+
+  /// Texto del botón.
+  final String etiqueta;
+}
+
 /// Ciclo de vida de una publicación con el **patrón State**.
 ///
 /// Cada estado es una clase que decide qué cambios acepta:
@@ -35,6 +48,27 @@ abstract class EstadoPublicacion extends Equatable {
 
   /// HU-04: ¿se muestra en el Feed? Las Vendidas ya no.
   bool get visibleEnFeed => true;
+
+  /// HU-06: acciones de estado que el dueño puede elegir ahora.
+  List<AccionEstado> get acciones => const <AccionEstado>[];
+
+  /// HU-06: solo una publicación Disponible se edita (con un trato en
+  /// curso no se cambian el precio ni las fotos; una Vendida es historial).
+  bool get sePuedeEditar => false;
+
+  /// HU-06: solo una publicación Disponible se borra.
+  bool get sePuedeBorrar => false;
+
+  /// HU-06: Vendido es el estado final; va al historial de "Finalizadas".
+  bool get esFinal => false;
+
+  /// HU-06: aplica la [accion]. Si este estado no la permite, lanza
+  /// [TransicionNoPermitidaFailure] (lo decide cada estado, no un `if`).
+  EstadoPublicacion aplicar(AccionEstado accion) => switch (accion) {
+        AccionEstado.reservar => reservar(),
+        AccionEstado.liberar => liberar(),
+        AccionEstado.marcarVendido => marcarVendido(),
+      };
 
   EstadoPublicacion reservar() => _noPermitido('Reservado');
 
@@ -76,6 +110,15 @@ class Disponible extends EstadoPublicacion {
   bool get aceptaSolicitudes => true;
 
   @override
+  List<AccionEstado> get acciones => const [AccionEstado.reservar, AccionEstado.marcarVendido];
+
+  @override
+  bool get sePuedeEditar => true;
+
+  @override
+  bool get sePuedeBorrar => true;
+
+  @override
   EstadoPublicacion reservar() => const Reservado();
 
   @override
@@ -93,6 +136,9 @@ class Reservado extends EstadoPublicacion {
 
   @override
   String get aviso => 'Este artículo está reservado: el dueño ya está en trato.';
+
+  @override
+  List<AccionEstado> get acciones => const [AccionEstado.liberar, AccionEstado.marcarVendido];
 
   @override
   EstadoPublicacion liberar() => const Disponible();
@@ -115,4 +161,7 @@ class Vendido extends EstadoPublicacion {
 
   @override
   bool get visibleEnFeed => false;
+
+  @override
+  bool get esFinal => true;
 }

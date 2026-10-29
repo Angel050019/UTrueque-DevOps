@@ -64,3 +64,36 @@ class PublicacionNoEncontradaFailure extends Failure {
   const PublicacionNoEncontradaFailure()
       : super('Esta publicación ya no está disponible.');
 }
+
+// ---------------------------------------------------------------------------
+// HU-06: Gestión de "Mis publicaciones"
+// ---------------------------------------------------------------------------
+
+/// No se pudo leer "Mis publicaciones" por un error del servidor
+/// (HU-06, Escenario 13). SEGURIDAD: sin detalles internos.
+class CargarMisPublicacionesFailure extends ServidorFailure {
+  const CargarMisPublicacionesFailure()
+      : super('No pudimos cargar tus publicaciones. Inténtalo de nuevo.');
+}
+
+/// No se pudo cambiar el estado, editar o borrar por un error del servidor
+/// (HU-06, Escenario 13). SEGURIDAD: sin detalles internos.
+class GestionarPublicacionFailure extends ServidorFailure {
+  const GestionarPublicacionFailure()
+      : super('No pudimos completar la acción. Inténtalo de nuevo.');
+}
+
+/// El estado de la publicación ya no permite esa acción: por ejemplo, se
+/// vendió desde otro dispositivo (HU-06, Escenario 9). Lo decide el servidor
+/// con las mismas reglas del patrón State.
+class AccionNoPermitidaFailure extends Failure {
+  const AccionNoPermitidaFailure()
+      : super('Esa acción ya no es posible: la publicación cambió de estado.');
+}
+
+/// La publicación no es del estudiante (o ya no existe): el servidor no
+/// modificó nada (HU-06, Escenario 10).
+class ModificarSinPermisoFailure extends Failure {
+  const ModificarSinPermisoFailure()
+      : super('No tienes permiso para modificar esta publicación.');
+}
