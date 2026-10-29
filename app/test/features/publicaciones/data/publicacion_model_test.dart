@@ -170,4 +170,37 @@ void main() {
       expect(modelo.nombre, categoriaCalculadoras.nombre);
     });
   });
+  group('PublicacionModel (HU-06)', () {
+    test('paraEditar manda los mismos campos que al crear, sin dueño ni estado', () {
+      final Map<String, dynamic> datos = PublicacionModel.paraEditar(
+        titulo: tituloValido,
+        descripcion: descripcionValida,
+        categoriaId: 2,
+        modalidad: Modalidad.gratis,
+        precio: 150,
+        fotos: const [rutaFoto1],
+      );
+
+      expect(datos, <String, dynamic>{
+        'titulo': tituloValido,
+        'descripcion': descripcionValida,
+        'categoria_id': 2,
+        'modalidad': 'gratis',
+        // Fuera de Venta el precio se manda vacío.
+        'precio': null,
+        'fotos': [rutaFoto1],
+      });
+      expect(datos.containsKey('usuario_id'), isFalse);
+      expect(datos.containsKey('estado'), isFalse);
+    });
+
+    test('paraCambiarEstado manda SOLO el estado nuevo', () {
+      expect(PublicacionModel.paraCambiarEstado(const Reservado()), {'estado': 'reservado'});
+      expect(PublicacionModel.paraCambiarEstado(const Vendido()), {'estado': 'vendido'});
+    });
+
+    test('la función de "Mis publicaciones" es mis_publicaciones', () {
+      expect(PublicacionModel.funcionMisPublicaciones, 'mis_publicaciones');
+    });
+  });
 }

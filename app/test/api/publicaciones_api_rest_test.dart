@@ -20,8 +20,14 @@
 // sin resultados, filtros combinados con paginación, 500, sin conexión y sin
 // sesión.
 //
+// HU-06 (Gestión de "Mis publicaciones", issue #1) agrega CP-36 a CP-47:
+// listar mis publicaciones (POST /rest/v1/rpc/mis_publicaciones), cambiar el
+// estado y editar (PATCH /rest/v1/publicaciones), borrar con sus fotos
+// (DELETE), transición rechazada por el servidor, publicación de otro
+// estudiante, 500, sin conexión y sin sesión.
+//
 // Ver docs/Plan_de_Pruebas.md, Sección 2, y docs/Sprint3_Planning.md a
-// docs/Sprint5_Planning.md.
+// docs/Sprint6_Planning.md.
 
 import 'dart:convert';
 
@@ -32,18 +38,24 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:utrueque/core/errors/failures.dart';
 import 'package:utrueque/core/network/network_info.dart';
 import 'package:utrueque/features/publicaciones/data/datasources/publicacion_remote_datasource.dart';
+import 'package:utrueque/features/publicaciones/data/models/publicacion_model.dart';
 import 'package:utrueque/features/publicaciones/data/repositories/publicacion_repository_impl.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/categoria.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/estado_publicacion.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/filtros_feed.dart';
+import 'package:utrueque/features/publicaciones/domain/entities/foto_articulo.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/modalidad.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/pagina_feed.dart';
 import 'package:utrueque/features/publicaciones/domain/entities/publicacion.dart';
 import 'package:utrueque/features/publicaciones/domain/errors/publicacion_failures.dart';
+import 'package:utrueque/features/publicaciones/domain/usecases/borrar_publicacion.dart';
 import 'package:utrueque/features/publicaciones/domain/usecases/buscar_publicaciones.dart';
+import 'package:utrueque/features/publicaciones/domain/usecases/cambiar_estado_publicacion.dart';
 import 'package:utrueque/features/publicaciones/domain/usecases/crear_publicacion.dart';
+import 'package:utrueque/features/publicaciones/domain/usecases/editar_publicacion.dart';
 import 'package:utrueque/features/publicaciones/domain/usecases/obtener_categorias.dart';
 import 'package:utrueque/features/publicaciones/domain/usecases/obtener_detalle_publicacion.dart';
+import 'package:utrueque/features/publicaciones/domain/usecases/obtener_mis_publicaciones.dart';
 
 import '../features/publicaciones/fixtures.dart';
 
@@ -57,6 +69,9 @@ const String _rutaPublicaciones = '/rest/v1/publicaciones';
 // HU-04 y HU-05: el Feed (con o sin filtros) y el Detalle
 const String _rutaFeed = '/rest/v1/rpc/buscar_publicaciones';
 const String _rutaDetalle = '/rest/v1/publicaciones_detalle';
+
+// HU-06: Mis publicaciones
+const String _rutaMisPublicaciones = '/rest/v1/rpc/mis_publicaciones';
 
 /// Servidor HTTP simulado que imita las respuestas de Supabase y guarda cada
 /// petición recibida para revisarla en el ASSERT. Las rutas se buscan por
@@ -881,6 +896,440 @@ void main() {
       final String enviado = _cuerpoJson(peticiones.last)['p_texto'] as String;
       expect(enviado.length, lessThanOrEqualTo(FiltrosFeed.maximoCaracteres));
       expect(enviado, startsWith('libro libro'));
+    });
+  });
+  group('API REST de "Mis publicaciones" (HU-06, issue #1) — patrón AAA', () {
+    /// Fila de la tabla `publicaciones` como la regresa PATCH o DELETE.
+    Map<String, dynamic> filaTabla(String id, {String estado = 'disponible'}) {
+      final Map<String, dynamic> fila = _filaVista(id);
+      return <String, dynamic>{
+        for (final String columna in <String>[
+          'id', 'usuario_id', 'titulo', 'descripcion', 'categoria_id', 'modalidad', 'precio',
+          'fotos', 'created_at',
+        ])
+          columna: fila[columna],
+        'estado': estado,
+      };
+    }
+
+    /// La publicación como la ve la app antes de gestionarla.
+    Publicacion miPublicacionGuardada({EstadoPublicacion estado = const Disponible()}) {
+      return PublicacionModel.fromMap(<String, dynamic>{..._filaVista('pub-1'), 'estado': estado.valor});
+    }
+
+    List<http.Request> peticionesA(String metodo, String ruta) => api.peticionesDeLaApp
+        .where((p) => p.method == metodo && p.url.path == ruta)
+        .toList(growable: false);
+
+    test(
+        'CP-36 (Escenario 1): POST /rest/v1/rpc/mis_publicaciones responde 200 con mis '
+        'publicaciones activas; no se manda el id del dueño', () async {
+      // ARRANGE
+      api.cuando('POST', _rutaMisPublicaciones,
+          (_) => _json(200, <Map<String, dynamic>>[_filaVista('pub-1'), _filaVista('pub-2')]));
+
+      // ACT
+      final PaginaFeed pagina =
+          await ObtenerMisPublicaciones(repositorio, _RedSimulada(conectado: true))();
+
+      // ASSERT: respuesta interpretada
+      expect(pagina.publicaciones.map((p) => p.id), ['pub-1', 'pub-2']);
+      expect(pagina.publicaciones.first.usuarioId, idAlumno);
+      expect(pagina.publicaciones.first.portadaUrl, contains('/publicaciones/$rutaFoto1'));
+      expect(pagina.hayMas, isFalse);
+
+      // ASSERT: petición enviada. SEGURIDAD: el dueño sale de la sesión.
+      final http.Request peticion = api.peticionesDeLaApp.single;
+      expect(peticion.method, 'POST');
+      expect(peticion.url.path, _rutaMisPublicaciones);
+      expect(_cuerpoJson(peticion), <String, dynamic>{'p_limite': 20});
+      expect(peticion.headers['Authorization'], 'Bearer $_tokenAcceso');
+    });
+
+    test(
+        'CP-37 (Escenarios 1 y 2): Finalizadas manda p_finalizadas y la segunda página '
+        'manda el cursor', () async {
+      // ARRANGE: primera página completa (20) y luego 2 más.
+      int pedidas = 0;
+      api.cuando(
+        'POST',
+        _rutaMisPublicaciones,
+        (_) => _json(200, ++pedidas == 1 ? _filasVista(20) : _filasVista(2)),
+      );
+      final ObtenerMisPublicaciones obtener =
+          ObtenerMisPublicaciones(repositorio, _RedSimulada(conectado: true));
+
+      // ACT
+      final PaginaFeed primera = await obtener(finalizadas: true);
+      final PaginaFeed segunda = await obtener(finalizadas: true, despuesDe: primera.siguiente);
+
+      // ASSERT
+      expect(primera.hayMas, isTrue);
+      expect(segunda.publicaciones, hasLength(2));
+      expect(segunda.hayMas, isFalse);
+      final List<http.Request> peticiones = api.peticionesDeLaApp;
+      expect(_cuerpoJson(peticiones.first), <String, dynamic>{'p_limite': 20, 'p_finalizadas': true});
+      expect(_cuerpoJson(peticiones.last), <String, dynamic>{
+        'p_limite': 20,
+        'p_finalizadas': true,
+        'p_antes_de': '2026-10-13T18:00:00.123456+00:00',
+        'p_antes_id': 'pub-19',
+      });
+    });
+
+    test(
+        'CP-38 (Escenarios 3 y 5): Reservar hace PATCH /rest/v1/publicaciones solo con el '
+        'estado → 200, y regresa la publicación actualizada con su categoría y dueño', () async {
+      // ARRANGE
+      api.cuando('PATCH', _rutaPublicaciones,
+          (_) => _json(200, <Map<String, dynamic>>[filaTabla('pub-1', estado: 'reservado')]));
+      api.cuando('GET', _rutaDetalle, (_) => _json(200, <Map<String, dynamic>>[
+            <String, dynamic>{..._filaVista('pub-1'), 'estado': 'reservado'},
+          ]));
+
+      // ACT
+      final Publicacion resultado =
+          await CambiarEstadoPublicacion(repositorio, _RedSimulada(conectado: true))(
+        miPublicacionGuardada(),
+        AccionEstado.reservar,
+      );
+
+      // ASSERT: respuesta interpretada
+      expect(resultado.estado, const Reservado());
+      expect(resultado.categoriaNombre, 'Calculadoras');
+      expect(resultado.duenoNombre, 'Ana López');
+
+      // ASSERT: petición enviada (PATCH a esa publicación, solo el estado)
+      final http.Request cambio = peticionesA('PATCH', _rutaPublicaciones).single;
+      expect(cambio.url.queryParameters['id'], 'eq.pub-1');
+      expect(cambio.headers['Authorization'], 'Bearer $_tokenAcceso');
+      expect(cambio.headers['Prefer'], contains('return=representation'));
+      expect(_cuerpoJson(cambio), <String, dynamic>{'estado': 'reservado'});
+      // SEGURIDAD: nunca se manda el dueño.
+      expect(_cuerpoJson(cambio).containsKey('usuario_id'), isFalse);
+    });
+
+    test(
+        'CP-39 (Escenario 9): si el servidor rechaza la transición (400, pista '
+        'transicion_no_permitida), la app lo traduce sin detalles internos', () async {
+      // ARRANGE
+      api.cuando('PATCH', _rutaPublicaciones, (_) => _json(400, <String, dynamic>{
+            'code': '23514',
+            'details': null,
+            'hint': 'transicion_no_permitida',
+            'message': 'Cambio de estado no permitido: vendido → disponible',
+          }));
+
+      // ACT: se llama directo al repositorio, saltando la revisión de la app.
+      final Future<Publicacion> intento = repositorio.cambiarEstado('pub-1', const Disponible());
+
+      // ASSERT
+      await expectLater(
+        intento,
+        throwsA(isA<AccionNoPermitidaFailure>()
+            .having(
+              (f) => f.mensaje,
+              'mensaje',
+              'Esa acción ya no es posible: la publicación cambió de estado.',
+            )
+            .having((f) => f.mensaje, 'sin detalles', isNot(contains('vendido →')))),
+      );
+      expect(peticionesA('GET', _rutaDetalle), isEmpty);
+    });
+
+    test(
+        'CP-40 (Escenario 6): editar hace PATCH con los datos (sin dueño ni estado) → 200 y '
+        'borra de Storage la foto que se quitó', () async {
+      // ARRANGE
+      api.cuando('PATCH', _rutaPublicaciones,
+          (p) => _json(200, <Map<String, dynamic>>[<String, dynamic>{...filaTabla('pub-1'), ..._cuerpoJson(p)}]));
+      api.cuando('GET', _rutaDetalle, (_) => _json(200, <Map<String, dynamic>>[
+            <String, dynamic>{..._filaVista('pub-1'), 'titulo': 'Calculadora Casio', 'fotos': [rutaFoto1]},
+          ]));
+      api.cuando('DELETE', _rutaStorage, (_) => _json(200, <dynamic>[]));
+
+      // ACT: se cambia el título, pasa a Gratis y se quita la segunda foto.
+      final Publicacion resultado =
+          await EditarPublicacion(repositorio, _RedSimulada(conectado: true))(
+        miPublicacionGuardada(),
+        borrador(
+          titulo: 'Calculadora Casio',
+          modalidad: Modalidad.gratis,
+          precioTexto: '150',
+          fotos: [FotoArticulo.guardada(ruta: rutaFoto1, url: 'https://fotos/1.jpg')],
+        ),
+      );
+
+      // ASSERT: respuesta interpretada
+      expect(resultado.titulo, 'Calculadora Casio');
+      expect(resultado.fotos, [rutaFoto1]);
+
+      // ASSERT: no se subió nada; un PATCH con los datos; se borró la foto quitada
+      expect(peticionesA('POST', '$_rutaStorage/$rutaFoto1'), isEmpty);
+      final http.Request cambio = peticionesA('PATCH', _rutaPublicaciones).single;
+      expect(cambio.url.queryParameters['id'], 'eq.pub-1');
+      expect(_cuerpoJson(cambio), <String, dynamic>{
+        'titulo': 'Calculadora Casio',
+        'descripcion': descripcionValida,
+        'categoria_id': 2,
+        'modalidad': 'gratis',
+        'precio': null,
+        'fotos': [rutaFoto1],
+      });
+      final http.Request borrado = peticionesA('DELETE', _rutaStorage).single;
+      expect(jsonDecode(borrado.body), <String, dynamic>{
+        'prefixes': [rutaFoto2],
+      });
+    });
+
+    test(
+        'CP-41 (Escenario 9): editar una Reservada (pista publicacion_no_editable) responde '
+        '400 y no se borra ninguna foto', () async {
+      // ARRANGE
+      api.cuando('PATCH', _rutaPublicaciones, (_) => _json(400, <String, dynamic>{
+            'code': '23514',
+            'hint': 'publicacion_no_editable',
+            'message': 'Solo se puede editar una publicación Disponible',
+          }));
+
+      // ACT
+      final Future<Publicacion> intento = repositorio.editarPublicacion(
+        id: 'pub-1',
+        titulo: tituloValido,
+        descripcion: descripcionValida,
+        categoriaId: 2,
+        modalidad: Modalidad.gratis,
+        precio: null,
+        fotos: const [rutaFoto1],
+      );
+
+      // ASSERT
+      await expectLater(intento, throwsA(isA<AccionNoPermitidaFailure>()));
+      expect(peticionesA('DELETE', _rutaStorage), isEmpty);
+    });
+
+    test(
+        'CP-41 (Escenario 7, defensa en el servidor): si alguien salta la app al editar, las '
+        'reglas de HU-03 responden 400 y la categoría inexistente 409', () async {
+      // ARRANGE: primero precio inválido (check sin pista), luego categoría inexistente.
+      int patches = 0;
+      api.cuando('PATCH', _rutaPublicaciones, (_) => ++patches == 1
+          ? _json(400, <String, dynamic>{
+              'code': '23514',
+              'hint': null,
+              'message': 'new row for relation "publicaciones" violates check constraint '
+                  '"publicaciones_precio_chk"',
+            })
+          : _json(409, <String, dynamic>{
+              'code': '23503',
+              'message': 'insert or update on table "publicaciones" violates foreign key constraint',
+            }));
+      Future<Publicacion> editar() => repositorio.editarPublicacion(
+            id: 'pub-1',
+            titulo: tituloValido,
+            descripcion: descripcionValida,
+            categoriaId: 99,
+            modalidad: Modalidad.venta,
+            precio: 0,
+            fotos: const [rutaFoto1],
+          );
+
+      // ACT + ASSERT: el mensaje no revela el nombre de la regla.
+      await expectLater(
+        editar(),
+        throwsA(isA<PublicacionRechazadaFailure>()
+            .having((f) => f.mensaje, 'mensaje', isNot(contains('publicaciones_precio_chk')))),
+      );
+      await expectLater(
+        editar(),
+        throwsA(isA<PublicacionInvalidaFailure>().having(
+          (f) => f.errores[CampoPublicacion.categoria],
+          'error de categoría',
+          'La categoría seleccionada no existe.',
+        )),
+      );
+    });
+
+    test(
+        'CP-42 (Escenario 8): borrar hace DELETE /rest/v1/publicaciones → 200 y después '
+        'borra sus fotos de Storage', () async {
+      // ARRANGE
+      api.cuando('DELETE', _rutaPublicaciones, (_) => _json(200, <Map<String, dynamic>>[
+            <String, dynamic>{'fotos': [rutaFoto1, rutaFoto2]},
+          ]));
+      api.cuando('DELETE', _rutaStorage, (_) => _json(200, <dynamic>[]));
+
+      // ACT
+      await BorrarPublicacion(repositorio, _RedSimulada(conectado: true))(miPublicacionGuardada());
+
+      // ASSERT: primero la publicación y luego sus fotos
+      final List<http.Request> peticiones = api.peticionesDeLaApp;
+      expect(peticiones, hasLength(2));
+      expect(peticiones.first.method, 'DELETE');
+      expect(peticiones.first.url.path, _rutaPublicaciones);
+      expect(peticiones.first.url.queryParameters['id'], 'eq.pub-1');
+      expect(peticiones.first.url.queryParameters['select'], 'fotos');
+      expect(peticiones.first.headers['Authorization'], 'Bearer $_tokenAcceso');
+      expect(peticiones.last.url.path, _rutaStorage);
+      expect(jsonDecode(peticiones.last.body), <String, dynamic>{
+        'prefixes': [rutaFoto1, rutaFoto2],
+      });
+    });
+
+    test(
+        'CP-43 (Escenario 10): con la publicación de otro estudiante el servidor no modifica '
+        'nada (0 filas o 403) y la app no borra fotos', () async {
+      // ARRANGE: PATCH y DELETE regresan 0 filas (RLS); un segundo PATCH, 403.
+      int patches = 0;
+      api.cuando('PATCH', _rutaPublicaciones, (_) => ++patches == 1
+          ? _json(200, <Map<String, dynamic>>[])
+          : _json(403, <String, dynamic>{
+              'code': '42501',
+              'message': 'new row violates row-level security policy for table "publicaciones"',
+            }));
+      api.cuando('DELETE', _rutaPublicaciones, (_) => _json(200, <Map<String, dynamic>>[]));
+      final Matcher sinPermiso = throwsA(isA<ModificarSinPermisoFailure>().having(
+        (f) => f.mensaje,
+        'mensaje',
+        'No tienes permiso para modificar esta publicación.',
+      ));
+
+      // ACT + ASSERT
+      await expectLater(repositorio.cambiarEstado('ajena', const Vendido()), sinPermiso);
+      await expectLater(repositorio.cambiarEstado('ajena', const Vendido()), sinPermiso);
+      await expectLater(
+        BorrarPublicacion(repositorio, _RedSimulada(conectado: true))(miPublicacionGuardada()),
+        sinPermiso,
+      );
+      expect(peticionesA('DELETE', _rutaStorage), isEmpty);
+      expect(peticionesA('GET', _rutaDetalle), isEmpty);
+    });
+
+    test('CP-43 (Escenario 10): un id con formato inválido es lo mismo que "ya no existe"',
+        () async {
+      // ARRANGE
+      api.cuando('DELETE', _rutaPublicaciones, (_) => _json(400, <String, dynamic>{
+            'code': '22P02',
+            'message': 'invalid input syntax for type uuid: "no-es-uuid"',
+          }));
+
+      // ACT + ASSERT
+      await expectLater(
+        repositorio.borrarPublicacion('no-es-uuid'),
+        throwsA(isA<PublicacionNoEncontradaFailure>()),
+      );
+      expect(peticionesA('DELETE', _rutaStorage), isEmpty);
+    });
+
+    test(
+        'CP-44 (Escenario 13): un 500 da mensajes genéricos sin detalles; si solo falla la '
+        'segunda lectura, el cambio ya guardado se respeta', () async {
+      // ARRANGE
+      int patches = 0;
+      api.cuando('POST', _rutaMisPublicaciones,
+          (_) => _json(500, <String, dynamic>{'code': 'XX000', 'message': 'falló en 10.0.0.8'}));
+      api.cuando('PATCH', _rutaPublicaciones, (_) => ++patches == 1
+          ? _json(500, <String, dynamic>{'code': 'XX000', 'message': 'falló en 10.0.0.8'})
+          : _json(200, <Map<String, dynamic>>[filaTabla('pub-1', estado: 'reservado')]));
+      api.cuando('GET', _rutaDetalle,
+          (_) => _json(500, <String, dynamic>{'code': 'XX000', 'message': 'falló en 10.0.0.8'}));
+
+      // ACT + ASSERT: cargar mis publicaciones
+      await expectLater(
+        ObtenerMisPublicaciones(repositorio, _RedSimulada(conectado: true))(),
+        throwsA(isA<CargarMisPublicacionesFailure>()
+            .having((f) => f.mensaje, 'mensaje', 'No pudimos cargar tus publicaciones. Inténtalo de nuevo.')
+            .having((f) => f.mensaje, 'sin IP', isNot(contains('10.0.0.8')))),
+      );
+
+      // ACT + ASSERT: cambiar el estado
+      await expectLater(
+        repositorio.cambiarEstado('pub-1', const Reservado()),
+        throwsA(isA<GestionarPublicacionFailure>()
+            .having((f) => f.mensaje, 'mensaje', 'No pudimos completar la acción. Inténtalo de nuevo.')
+            .having((f) => f.mensaje, 'sin IP', isNot(contains('10.0.0.8')))),
+      );
+
+      // ACT + ASSERT: el PATCH sale bien pero la vista falla
+      final Publicacion guardada = await repositorio.cambiarEstado('pub-1', const Reservado());
+      expect(guardada.estado, const Reservado());
+      expect(guardada.portadaUrl, contains('/publicaciones/$rutaFoto1'));
+    });
+
+    test('CP-45 (Escenario 12): sin conexión no se envía ninguna petición', () async {
+      // ARRANGE
+      final _RedSimulada sinRed = _RedSimulada(conectado: false);
+
+      // ACT + ASSERT
+      await expectLater(ObtenerMisPublicaciones(repositorio, sinRed)(), throwsA(isA<SinConexionFailure>()));
+      await expectLater(
+        CambiarEstadoPublicacion(repositorio, sinRed)(miPublicacionGuardada(), AccionEstado.reservar),
+        throwsA(isA<SinConexionFailure>()),
+      );
+      await expectLater(
+        EditarPublicacion(repositorio, sinRed)(miPublicacionGuardada(), borrador(fotos: [fotoJpg()])),
+        throwsA(isA<SinConexionFailure>()),
+      );
+      await expectLater(
+        BorrarPublicacion(repositorio, sinRed)(miPublicacionGuardada()),
+        throwsA(isA<SinConexionFailure>()),
+      );
+      expect(api.peticionesDeLaApp, isEmpty);
+    });
+
+    test('CP-46: sin sesión no se envía ninguna petición', () async {
+      // ARRANGE: un cliente que nunca inició sesión.
+      final SupabaseClient sinSesion = SupabaseClient(
+        _urlSupabase,
+        _anonKey,
+        httpClient: api.cliente,
+        authOptions: const AuthClientOptions(
+          autoRefreshToken: false,
+          authFlowType: AuthFlowType.implicit,
+        ),
+      );
+      final PublicacionRepositoryImpl repo =
+          PublicacionRepositoryImpl(PublicacionRemoteDataSourceImpl(sinSesion));
+
+      // ACT + ASSERT
+      await expectLater(
+        repo.obtenerMisPublicaciones(finalizadas: false, limite: 20),
+        throwsA(isA<SesionNoIniciadaFailure>()),
+      );
+      await expectLater(repo.cambiarEstado('pub-1', const Reservado()), throwsA(isA<SesionNoIniciadaFailure>()));
+      await expectLater(repo.borrarPublicacion('pub-1'), throwsA(isA<SesionNoIniciadaFailure>()));
+      expect(api.peticionesDeLaApp, isEmpty);
+      await sinSesion.dispose();
+    });
+
+    test(
+        'CP-47 (Escenarios 6 y 13): al editar con una foto nueva se sube a Storage; si el '
+        'guardado falla, se borra solo esa foto nueva', () async {
+      // ARRANGE
+      api.cuando('POST', _rutaStorage, (p) => _json(200, <String, dynamic>{'Key': p.url.path}));
+      api.cuando('PATCH', _rutaPublicaciones, (_) => _json(500, <String, dynamic>{'code': 'XX000', 'message': 'x'}));
+      api.cuando('DELETE', _rutaStorage, (_) => _json(200, <dynamic>[]));
+
+      // ACT: se conserva la foto 1 y se agrega una nueva.
+      final Future<Publicacion> intento =
+          EditarPublicacion(repositorio, _RedSimulada(conectado: true))(
+        miPublicacionGuardada(),
+        borrador(fotos: [
+          FotoArticulo.guardada(ruta: rutaFoto1, url: 'https://fotos/1.jpg'),
+          fotoPng(),
+        ]),
+      );
+
+      // ASSERT
+      await expectLater(intento, throwsA(isA<GestionarPublicacionFailure>()));
+      final http.Request subida = peticionesA('POST', '$_rutaStorage/$idAlumno/1_0.png').single;
+      expect(subida.headers['Authorization'], 'Bearer $_tokenAcceso');
+      expect((_cuerpoJson(peticionesA('PATCH', _rutaPublicaciones).single))['fotos'],
+          [rutaFoto1, '$idAlumno/1_0.png']);
+      final http.Request borrado = peticionesA('DELETE', _rutaStorage).single;
+      expect(jsonDecode(borrado.body), <String, dynamic>{
+        'prefixes': ['$idAlumno/1_0.png'],
+      });
     });
   });
 }
