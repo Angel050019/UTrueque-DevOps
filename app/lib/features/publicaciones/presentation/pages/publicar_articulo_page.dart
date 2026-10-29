@@ -2,12 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_constants.dart';
+import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/app_ui.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../domain/entities/foto_articulo.dart';
+import '../../domain/entities/modalidad.dart';
+import '../../domain/entities/publicacion.dart';
 import '../../domain/errors/publicacion_failures.dart';
+import '../avisos_publicaciones.dart';
 import '../cubit/publicacion_cubit.dart';
 import '../cubit/publicacion_state.dart';
 import '../publicacion_keys.dart';
@@ -22,11 +26,27 @@ import 'publicacion_confirmada_page.dart';
 /// Se abre desde el botón "Publicar" del Feed. Al publicar con éxito
 /// (201 Created) regresa al Feed principal.
 ///
+/// HU-06: con [original] es la pantalla "Editar publicación": empieza con
+/// los datos actuales, el botón dice "Guardar cambios" y al guardar regresa
+/// a la pantalla anterior con la publicación actualizada.
+///
 /// Solo dibuja el estado del [PublicacionCubit] y le pasa lo que el
 /// estudiante escribe; las validaciones viven en el Cubit y en los casos de
 /// uso.
 class PublicarArticuloPage extends StatefulWidget {
-  const PublicarArticuloPage({super.key});
+  const PublicarArticuloPage({super.key, this.original});
+
+  /// HU-06: publicación que se está editando (`null` al publicar una nueva).
+  final Publicacion? original;
+
+  /// HU-06: abre "Editar publicación". Devuelve la publicación guardada, o
+  /// `null` si el estudiante regresó sin guardar.
+  static Future<Publicacion?> editar(BuildContext context, Publicacion publicacion) {
+    return Navigator.of(context).pushNamed<Publicacion>(
+      AppRoutes.editarPublicacion,
+      arguments: publicacion,
+    );
+  }
 
   @override
   State<PublicarArticuloPage> createState() => _PublicarArticuloPageState();
@@ -36,6 +56,25 @@ class _PublicarArticuloPageState extends State<PublicarArticuloPage> {
   final TextEditingController _tituloController = TextEditingController();
   final TextEditingController _descripcionController = TextEditingController();
   final TextEditingController _precioController = TextEditingController();
+
+  bool get _editando => widget.original != null;
+
+  @override
+  void initState() {
+    super.initState();
+    // HU-06: al editar, los campos de texto empiezan con los datos actuales.
+    final Publicacion? original = widget.original;
+    if (original != null) {
+      _tituloController.text = original.titulo;
+      _descripcionController.text = original.descripcion;
+      final double? precio = original.precio;
+      if (original.modalidad == Modalidad.venta && precio != null) {
+        _precioController.text = precio == precio.truncateToDouble()
+            ? precio.toStringAsFixed(0)
+            : precio.toStringAsFixed(2);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -62,6 +101,13 @@ class _PublicarArticuloPageState extends State<PublicarArticuloPage> {
   }
 
   void _escuchar(BuildContext context, PublicacionState state) {
+    if (state is PublicacionPublicada && _editando) {
+      // HU-06: el Feed y "Mis publicaciones" se enteran del cambio.
+      context.read<AvisosPublicaciones>().avisar(state.publicacion.id, state.publicacion);
+      mostrarMensaje(context, 'Cambios guardados.');
+      Navigator.of(context).pop(state.publicacion);
+      return;
+    }
     if (state is PublicacionPublicada) {
       // Feed recargado + pantalla "Tu publicación está activa" encima.
       PublicacionConfirmadaPage.mostrar(
@@ -163,7 +209,7 @@ class _PublicarArticuloPageState extends State<PublicarArticuloPage> {
                 ),
               ],
               const SizedBox(height: 20),
-              const _AvisoPublicacion(),
+              _AvisoPublicacion(editando: _editando),
             ],
           ),
         ),
@@ -173,7 +219,7 @@ class _PublicarArticuloPageState extends State<PublicarArticuloPage> {
             padding: const EdgeInsets.fromLTRB(AppMedidas.margen, 8, AppMedidas.margen, 16),
             child: PrimaryButton(
               key: PublicacionKeys.publicarBoton,
-              texto: 'Publicar artículo',
+              texto: _editando ? 'Guardar cambios' : 'Publicar artículo',
               cargando: enviando,
               onPressed: () => _publicar(cubit),
             ),
@@ -189,7 +235,7 @@ class _PublicarArticuloPageState extends State<PublicarArticuloPage> {
       body: SafeArea(
         child: Column(
           children: [
-            const BarraSuperior(titulo: 'Publicar artículo'),
+            BarraSuperior(titulo: _editando ? 'Editar publicación' : 'Publicar artículo'),
             Expanded(
               child: BlocConsumer<PublicacionCubit, PublicacionState>(
                 listener: _escuchar,
@@ -205,7 +251,10 @@ class _PublicarArticuloPageState extends State<PublicarArticuloPage> {
 
 /// Recordatorio de cómo se verá la publicación.
 class _AvisoPublicacion extends StatelessWidget {
-  const _AvisoPublicacion();
+  const _AvisoPublicacion({required this.editando});
+
+  /// HU-06: al editar, el aviso explica qué pasa con las fotos que se quitan.
+  final bool editando;
 
   @override
   Widget build(BuildContext context) {
@@ -222,8 +271,11 @@ class _AvisoPublicacion extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Tu artículo aparecerá como Disponible y solo lo verán estudiantes '
-              'de la UTSJR con su cuenta institucional.',
+              editando
+                  ? 'Los cambios se verán de inmediato en el Feed. Las fotos que '
+                      'quites se borrarán.'
+                  : 'Tu artículo aparecerá como Disponible y solo lo verán estudiantes '
+                      'de la UTSJR con su cuenta institucional.',
               style: AppTexto.cuerpo(size: 13, color: AppColores.texto),
             ),
           ),
