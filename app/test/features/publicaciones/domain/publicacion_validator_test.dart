@@ -155,4 +155,43 @@ void main() {
       expect(errores, {CampoPublicacion.precio: PublicacionValidator.mensajePrecioVacio});
     });
   });
+
+  group('SEGURIDAD: caracteres permitidos (título y descripción)', () {
+    const PublicacionValidator v = PublicacionValidator();
+
+    test('un título con < > o comillas da el mensaje de caracteres', () {
+      expect(v.validarTitulo('<script>alert(1)</script>'), PublicacionValidator.mensajeTituloCaracteres);
+      expect(v.validarTitulo('Calculadora "HP"'), PublicacionValidator.mensajeTituloCaracteres);
+    });
+
+    test('primero se revisa la longitud y después los caracteres', () {
+      expect(v.validarTitulo('<>'), PublicacionValidator.mensajeTitulo);
+    });
+
+    test('los espacios de sobra al inicio o al final no cuentan', () {
+      expect(v.validarTitulo('  Cálculo (2a ed.)  '), isNull);
+    });
+
+    test('una descripción con ; o llaves da el mensaje de caracteres', () {
+      expect(v.validarDescripcion('Usado; sin funda y {detalles}'),
+          PublicacionValidator.mensajeDescripcionCaracteres);
+    });
+
+    test('una descripción con saltos de línea es válida', () {
+      expect(v.validarDescripcion('Talla M.\nPoco uso.'), isNull);
+    });
+
+    test('validar() marca título y descripción a la vez', () {
+      final Map<CampoPublicacion, String> errores = v.validar(borrador(
+        titulo: 'Libro <nuevo>',
+        descripcion: 'Descripción con @usuario incluido',
+      ));
+      expect(errores[CampoPublicacion.titulo], PublicacionValidator.mensajeTituloCaracteres);
+      expect(errores[CampoPublicacion.descripcion], PublicacionValidator.mensajeDescripcionCaracteres);
+    });
+
+    test('el mensaje dice qué signos sí se pueden usar', () {
+      expect(PublicacionValidator.mensajeTituloCaracteres, contains(r'. , - ( ) / # + : % ° $ ¿ ? ¡ !'));
+    });
+  });
 }
