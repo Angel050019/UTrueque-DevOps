@@ -32,14 +32,20 @@ import 'features/perfil/presentation/pages/editar_perfil_page.dart';
 import 'features/perfil/presentation/pages/mi_perfil_page.dart';
 import 'features/publicaciones/data/datasources/publicacion_remote_datasource.dart';
 import 'features/publicaciones/data/repositories/publicacion_repository_impl.dart';
+import 'features/publicaciones/domain/entities/publicacion.dart';
 import 'features/publicaciones/domain/repositories/publicacion_repository.dart';
 import 'features/publicaciones/domain/usecases/buscar_publicaciones.dart';
 import 'features/publicaciones/domain/usecases/crear_publicacion.dart';
+import 'features/publicaciones/domain/usecases/editar_publicacion.dart';
 import 'features/publicaciones/domain/usecases/obtener_categorias.dart';
 import 'features/publicaciones/domain/usecases/obtener_detalle_publicacion.dart';
+import 'features/publicaciones/domain/usecases/obtener_mis_publicaciones.dart';
+import 'features/publicaciones/presentation/avisos_publicaciones.dart';
 import 'features/publicaciones/presentation/cubit/detalle_publicacion_cubit.dart';
+import 'features/publicaciones/presentation/cubit/mis_publicaciones_cubit.dart';
 import 'features/publicaciones/presentation/cubit/publicacion_cubit.dart';
 import 'features/publicaciones/presentation/pages/detalle_publicacion_page.dart';
+import 'features/publicaciones/presentation/pages/mis_publicaciones_page.dart';
 import 'features/publicaciones/presentation/pages/publicar_articulo_page.dart';
 
 Future<void> main() async {
@@ -56,11 +62,15 @@ Future<void> main() async {
     publishableKey: const String.fromEnvironment(AppConstants.supabaseAnonKeyEnvKey),
   );
 
-  runApp(const UTruequeApp());
+  // HU-06: una sola instancia para toda la app. Avisa al Feed y a "Mis
+  // publicaciones" cuando una publicación cambia o se borra.
+  runApp(UTruequeApp(avisosPublicaciones: AvisosPublicaciones()));
 }
 
 class UTruequeApp extends StatelessWidget {
-  const UTruequeApp({super.key});
+  const UTruequeApp({super.key, required this.avisosPublicaciones});
+
+  final AvisosPublicaciones avisosPublicaciones;
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +99,10 @@ class UTruequeApp extends StatelessWidget {
         RepositoryProvider<AuthRepository>.value(value: authRepository),
         RepositoryProvider<PerfilRepository>.value(value: perfilRepository),
         RepositoryProvider<PublicacionRepository>.value(value: publicacionRepository),
+        // HU-06: la hoja "Gestionar publicación" arma sus casos de uso con
+        // el repositorio y la red, y avisa de los cambios.
+        RepositoryProvider<NetworkInfo>.value(value: networkInfo),
+        RepositoryProvider<AvisosPublicaciones>.value(value: avisosPublicaciones),
       ],
       child: BlocProvider(
         create: (_) => AuthCubit(
@@ -149,6 +163,26 @@ class UTruequeApp extends StatelessWidget {
                   idUsuarioActual: authRepository.usuarioActual?.id,
                 )..cargar(),
                 child: DetallePublicacionPage(alCambiar: args.alCambiar),
+              );
+            },
+            // HU-06: Gestión de "Mis publicaciones"
+            AppRoutes.misPublicaciones: (_) => BlocProvider(
+                  create: (_) => MisPublicacionesCubit(
+                    ObtenerMisPublicaciones(publicacionRepository, networkInfo),
+                  )..cargar(),
+                  child: const MisPublicacionesPage(),
+                ),
+            AppRoutes.editarPublicacion: (context) {
+              final Publicacion original =
+                  ModalRoute.of(context)?.settings.arguments as Publicacion;
+              return BlocProvider(
+                create: (_) => PublicacionCubit(
+                  obtenerCategorias: ObtenerCategorias(publicacionRepository, networkInfo),
+                  crearPublicacion: CrearPublicacion(publicacionRepository, networkInfo),
+                  editarPublicacion: EditarPublicacion(publicacionRepository, networkInfo),
+                  original: original,
+                )..cargarCategorias(),
+                child: PublicarArticuloPage(original: original),
               );
             },
           },

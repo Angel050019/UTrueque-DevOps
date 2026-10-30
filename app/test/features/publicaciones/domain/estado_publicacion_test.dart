@@ -79,4 +79,56 @@ void main() {
       expect(() => Modalidad.desdeValor('subasta'), throwsArgumentError);
     });
   });
+  group('HU-06: acciones del dueño según el estado (patrón State)', () {
+    test('Disponible: Reservar o Vender, y se puede editar y borrar', () {
+      const EstadoPublicacion estado = Disponible();
+      expect(estado.acciones, [AccionEstado.reservar, AccionEstado.marcarVendido]);
+      expect(estado.sePuedeEditar, isTrue);
+      expect(estado.sePuedeBorrar, isTrue);
+      expect(estado.esFinal, isFalse);
+    });
+
+    test('Reservado: Volver a Disponible o Vender; no se edita ni se borra', () {
+      const EstadoPublicacion estado = Reservado();
+      expect(estado.acciones, [AccionEstado.liberar, AccionEstado.marcarVendido]);
+      expect(estado.sePuedeEditar, isFalse);
+      expect(estado.sePuedeBorrar, isFalse);
+      expect(estado.esFinal, isFalse);
+    });
+
+    test('Vendido: es final, sin acciones; no se edita ni se borra', () {
+      const EstadoPublicacion estado = Vendido();
+      expect(estado.acciones, isEmpty);
+      expect(estado.sePuedeEditar, isFalse);
+      expect(estado.sePuedeBorrar, isFalse);
+      expect(estado.esFinal, isTrue);
+    });
+
+    test('aplicar hace la transición que pide cada acción', () {
+      expect(const Disponible().aplicar(AccionEstado.reservar), const Reservado());
+      expect(const Disponible().aplicar(AccionEstado.marcarVendido), const Vendido());
+      expect(const Reservado().aplicar(AccionEstado.liberar), const Disponible());
+      expect(const Reservado().aplicar(AccionEstado.marcarVendido), const Vendido());
+    });
+
+    test('Escenario 9: aplicar una acción que el estado no permite lanza el fallo', () {
+      expect(
+        () => const Disponible().aplicar(AccionEstado.liberar),
+        throwsA(isA<TransicionNoPermitidaFailure>()),
+      );
+      expect(
+        () => const Reservado().aplicar(AccionEstado.reservar),
+        throwsA(isA<TransicionNoPermitidaFailure>()),
+      );
+      for (final AccionEstado accion in AccionEstado.values) {
+        expect(() => const Vendido().aplicar(accion), throwsA(isA<TransicionNoPermitidaFailure>()));
+      }
+    });
+
+    test('cada acción tiene el texto de su botón', () {
+      expect(AccionEstado.reservar.etiqueta, 'Marcar como Reservado');
+      expect(AccionEstado.liberar.etiqueta, 'Volver a Disponible');
+      expect(AccionEstado.marcarVendido.etiqueta, 'Marcar como Vendido');
+    });
+  });
 }

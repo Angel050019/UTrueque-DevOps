@@ -141,7 +141,19 @@ class _Miniatura extends StatelessWidget {
             Positioned.fill(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(AppMedidas.radioCampo),
-                child: Image.memory(foto.bytes, fit: BoxFit.cover, gaplessPlayback: true),
+                // HU-06: al editar, las fotos que ya estaban guardadas se
+                // muestran desde su URL.
+                child: foto.yaGuardada
+                    ? Image.network(
+                        foto.url ?? '',
+                        fit: BoxFit.cover,
+                        gaplessPlayback: true,
+                        errorBuilder: (context, error, stackTrace) => const ColoredBox(
+                          color: AppColores.primarioSuave,
+                          child: Icon(Icons.image_outlined, color: AppColores.primario),
+                        ),
+                      )
+                    : Image.memory(foto.bytes, fit: BoxFit.cover, gaplessPlayback: true),
               ),
             ),
             if (indice == 0)

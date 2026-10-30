@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_ui.dart';
-import '../../../../core/widgets/en_desarrollo_page.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
@@ -179,8 +178,7 @@ class MiPerfilPage extends StatelessWidget {
   }
 }
 
-/// Acceso a "Mis publicaciones". La pantalla real llega en el Sprint 6
-/// (gestión de mis publicaciones); por ahora abre "En desarrollo".
+/// Acceso a "Mis publicaciones" (HU-06).
 class _MisPublicaciones extends StatelessWidget {
   const _MisPublicaciones();
 
@@ -192,13 +190,7 @@ class _MisPublicaciones extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         key: PerfilKeys.misPublicacionesBoton,
-        onTap: () => EnDesarrolloPage.abrir(
-          context,
-          titulo: 'Mis publicaciones',
-          mensaje: 'Muy pronto podrás ver tus artículos, editarlos y marcarlos '
-              'como Reservado o Vendido.',
-          sprint: 'Sprint 6',
-        ),
+        onTap: () => Navigator.of(context).pushNamed(AppRoutes.misPublicaciones),
         child: Padding(
           padding: const EdgeInsets.all(18),
           child: Row(

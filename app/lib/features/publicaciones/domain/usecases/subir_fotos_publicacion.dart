@@ -11,6 +11,7 @@ import '../validators/publicacion_validator.dart';
 /// - Valida TODAS antes de subir la primera (JPG/PNG, máx. 5 MB, de 1 a 5).
 /// - Si una subida falla, borra las que ya se habían subido para no dejar
 ///   archivos sueltos en Storage, y avisa del error.
+/// - HU-06: las fotos que ya estaban guardadas no se suben otra vez.
 /// Devuelve las rutas dentro del bucket, en el mismo orden.
 class SubirFotosPublicacion {
   SubirFotosPublicacion(this._repository, this._networkInfo, [PublicacionValidator? validador])
@@ -37,12 +38,22 @@ class SubirFotosPublicacion {
       throw const SinConexionFailure();
     }
 
+    // HU-06: al editar, las fotos que ya estaban guardadas conservan su
+    // ruta; solo se suben las nuevas.
+    final List<String> rutas = <String>[];
     final List<String> subidas = <String>[];
     try {
       for (final FotoArticulo foto in fotos) {
-        subidas.add(await _repository.subirFoto(foto));
+        final String? guardada = foto.ruta;
+        if (guardada != null) {
+          rutas.add(guardada);
+        } else {
+          final String ruta = await _repository.subirFoto(foto);
+          subidas.add(ruta);
+          rutas.add(ruta);
+        }
       }
-      return subidas;
+      return rutas;
     } catch (_) {
       await eliminarSinFallar(_repository, subidas);
       rethrow;

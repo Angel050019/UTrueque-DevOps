@@ -80,7 +80,9 @@ class PublicacionValidator {
   }
 
   /// Una foto: solo JPG o PNG y máximo 5 MB (Escenario 4).
+  /// HU-06: una foto que ya está guardada se validó cuando se subió.
   Failure? validarFoto(FotoArticulo foto) {
+    if (foto.yaGuardada) return null;
     if (foto.formato == null) return const FotoFormatoInvalidoFailure();
     if (foto.tamanoBytes > AppConstants.tamanoMaximoImagenBytes) {
       return const FotoArticuloDemasiadoGrandeFailure();

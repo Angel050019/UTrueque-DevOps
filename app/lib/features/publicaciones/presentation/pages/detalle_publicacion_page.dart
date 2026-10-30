@@ -16,6 +16,7 @@ import '../cubit/detalle_publicacion_cubit.dart';
 import '../cubit/detalle_publicacion_state.dart';
 import '../detalle_keys.dart';
 import '../widgets/etiqueta_publicacion.dart';
+import '../widgets/hoja_gestionar_publicacion.dart';
 
 /// Qué hacer cuando el Detalle descubre el estado actual de la publicación:
 /// [actual] es la publicación como está hoy, o `null` si ya se borró.
@@ -35,8 +36,7 @@ class DetallePublicacionArgs {
 /// modalidad, el estado (con su aviso si está Reservada o Vendida), la
 /// fecha, la descripción y el perfil público del dueño. "Contactar al
 /// vendedor" abre "En desarrollo" (chat, Sprint 7); si la publicación es
-/// mía, se muestra "Es tu publicación" y "Gestionar publicación"
-/// (Sprint 6).
+/// mía, se muestra "Es tu publicación" y "Gestionar publicación" (HU-06).
 ///
 /// Solo dibuja el estado del [DetallePublicacionCubit].
 class DetallePublicacionPage extends StatelessWidget {
@@ -361,13 +361,28 @@ class _TarjetaDueno extends StatelessWidget {
   }
 }
 
-/// Botón de abajo: "Contactar al vendedor" o, si es mía, "Gestionar
-/// publicación". Los dos abren "En desarrollo" por ahora.
+/// Botón de abajo: "Contactar al vendedor" (abre "En desarrollo" hasta el
+/// chat del Sprint 7) o, si es mía, "Gestionar publicación" (HU-06).
 // TODO(diseño): botón fijo de abajo según Figma.
 class _Acciones extends StatelessWidget {
   const _Acciones({required this.state});
 
   final DetalleCargado state;
+
+  /// HU-06: abre la hoja "Gestionar publicación". Al terminar, el Detalle
+  /// se vuelve a cargar para mostrar el estado y los datos nuevos
+  /// (Escenario 14); si se borró, regresa a la pantalla anterior.
+  Future<void> _gestionar(BuildContext context) async {
+    final DetallePublicacionCubit cubit = context.read<DetallePublicacionCubit>();
+    final NavigatorState navegador = Navigator.of(context);
+    final ResultadoGestion? resultado = await gestionarPublicacion(context, state.publicacion);
+    if (resultado == null) return;
+    if (resultado == ResultadoGestion.borrada) {
+      await navegador.maybePop();
+    } else {
+      await cubit.cargar();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -376,13 +391,7 @@ class _Acciones extends StatelessWidget {
       boton = SecondaryButton(
         key: DetalleKeys.gestionarBoton,
         texto: 'Gestionar publicación',
-        onPressed: () => EnDesarrolloPage.abrir(
-          context,
-          titulo: 'Gestionar publicación',
-          mensaje: 'Muy pronto podrás editar tu publicación, marcarla como '
-              'Reservada o Vendida, o borrarla.',
-          sprint: 'Sprint 6',
-        ),
+        onPressed: () => _gestionar(context),
       );
     } else {
       boton = PrimaryButton(

@@ -21,4 +21,10 @@ class AppRoutes {
 
   // HU-04: Feed de publicaciones. Recibe un `DetallePublicacionArgs`.
   static const String detallePublicacion = '/publicacion';
+
+  // HU-06: Gestión de "Mis publicaciones"
+  static const String misPublicaciones = '/mis-publicaciones';
+
+  /// Recibe la `Publicacion` que se va a editar.
+  static const String editarPublicacion = '/publicacion/editar';
 }

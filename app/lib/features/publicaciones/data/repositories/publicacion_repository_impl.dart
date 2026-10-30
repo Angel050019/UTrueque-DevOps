@@ -1,4 +1,5 @@
 import '../../domain/entities/categoria.dart';
+import '../../domain/entities/estado_publicacion.dart';
 import '../../domain/entities/filtros_feed.dart';
 import '../../domain/entities/foto_articulo.dart';
 import '../../domain/entities/modalidad.dart';
@@ -51,4 +52,44 @@ class PublicacionRepositoryImpl implements PublicacionRepository {
       fotos: fotos,
     );
   }
+
+  @override
+  Future<PaginaFeed> obtenerMisPublicaciones({
+    required bool finalizadas,
+    CursorFeed? despuesDe,
+    required int limite,
+  }) =>
+      _remoteDataSource.obtenerMisPublicaciones(
+        finalizadas: finalizadas,
+        despuesDe: despuesDe,
+        limite: limite,
+      );
+
+  @override
+  Future<Publicacion> cambiarEstado(String id, EstadoPublicacion nuevo) =>
+      _remoteDataSource.cambiarEstado(id, nuevo);
+
+  @override
+  Future<Publicacion> editarPublicacion({
+    required String id,
+    required String titulo,
+    required String descripcion,
+    required int categoriaId,
+    required Modalidad modalidad,
+    required double? precio,
+    required List<String> fotos,
+  }) {
+    return _remoteDataSource.editarPublicacion(
+      id: id,
+      titulo: titulo,
+      descripcion: descripcion,
+      categoriaId: categoriaId,
+      modalidad: modalidad,
+      precio: precio,
+      fotos: fotos,
+    );
+  }
+
+  @override
+  Future<List<String>> borrarPublicacion(String id) => _remoteDataSource.borrarPublicacion(id);
 }

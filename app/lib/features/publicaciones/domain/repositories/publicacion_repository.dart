@@ -1,4 +1,5 @@
 import '../entities/categoria.dart';
+import '../entities/estado_publicacion.dart';
 import '../entities/filtros_feed.dart';
 import '../entities/foto_articulo.dart';
 import '../entities/modalidad.dart';
@@ -44,4 +45,38 @@ abstract class PublicacionRepository {
     required double? precio,
     required List<String> fotos,
   });
+
+  // -------------------------------------------------------------------
+  // HU-06: Gestión de "Mis publicaciones"
+  // -------------------------------------------------------------------
+
+  /// Una página de las publicaciones del estudiante con sesión, de la más
+  /// nueva a la más vieja. [finalizadas] = false trae las Activas
+  /// (Disponibles y Reservadas); true trae las Vendidas (historial).
+  Future<PaginaFeed> obtenerMisPublicaciones({
+    required bool finalizadas,
+    CursorFeed? despuesDe,
+    required int limite,
+  });
+
+  /// Cambia el estado de la publicación [id] a [nuevo]. El servidor revisa
+  /// que la transición sea válida y que la publicación sea del estudiante.
+  /// Devuelve la publicación ya actualizada.
+  Future<Publicacion> cambiarEstado(String id, EstadoPublicacion nuevo);
+
+  /// Guarda los datos editados de la publicación [id] (solo Disponibles).
+  /// Devuelve la publicación ya actualizada.
+  Future<Publicacion> editarPublicacion({
+    required String id,
+    required String titulo,
+    required String descripcion,
+    required int categoriaId,
+    required Modalidad modalidad,
+    required double? precio,
+    required List<String> fotos,
+  });
+
+  /// Borra la publicación [id] (solo Disponibles) y devuelve las rutas de
+  /// sus fotos para borrarlas de Storage.
+  Future<List<String>> borrarPublicacion(String id);
 }

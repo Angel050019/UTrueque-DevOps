@@ -134,3 +134,45 @@ PaginaFeed paginaFeed(List<String> ids, {bool hayMas = false}) {
     siguiente: hayMas ? cursorDe(ids.last) : null,
   );
 }
+
+// ---------------------------------------------------------------------------
+// HU-06: Gestión de "Mis publicaciones"
+// ---------------------------------------------------------------------------
+
+/// Publicación del alumno con sesión ([idAlumno]), como llega a "Mis
+/// publicaciones" y al Detalle, con dos fotos guardadas.
+Publicacion miPublicacion(
+  String id, {
+  EstadoPublicacion estado = const Disponible(),
+  String titulo = tituloValido,
+}) {
+  return Publicacion(
+    id: id,
+    usuarioId: idAlumno,
+    titulo: titulo,
+    descripcion: descripcionValida,
+    categoriaId: categoriaCalculadoras.id,
+    categoriaNombre: categoriaCalculadoras.nombre,
+    modalidad: Modalidad.venta,
+    precio: 350,
+    estado: estado,
+    fotos: const [rutaFoto1, rutaFoto2],
+    fotosUrls: const ['https://fotos/1.jpg', 'https://fotos/2.jpg'],
+    portadaUrl: 'https://fotos/1.jpg',
+    creadaEn: DateTime.utc(2026, 10, 29, 18),
+    duenoNombre: 'Ana López',
+  );
+}
+
+/// Página de "Mis publicaciones" con esos [ids]; con [hayMas] trae el
+/// cursor de la última.
+PaginaFeed paginaMias(
+  List<String> ids, {
+  bool hayMas = false,
+  EstadoPublicacion estado = const Disponible(),
+}) {
+  return PaginaFeed(
+    publicaciones: ids.map((id) => miPublicacion(id, estado: estado)).toList(),
+    siguiente: hayMas ? cursorDe(ids.last) : null,
+  );
+}

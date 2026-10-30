@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -15,6 +17,7 @@ import '../../../perfil/presentation/widgets/avatar_perfil.dart';
 import '../../../publicaciones/domain/entities/categoria.dart';
 import '../../../publicaciones/domain/entities/filtros_feed.dart';
 import '../../../publicaciones/domain/entities/publicacion.dart';
+import '../../../publicaciones/presentation/avisos_publicaciones.dart';
 import '../../../publicaciones/presentation/pages/detalle_publicacion_page.dart';
 import '../../../publicaciones/presentation/widgets/tarjeta_publicacion.dart';
 import '../cubit/feed_cubit.dart';
@@ -51,14 +54,24 @@ class _FeedPageState extends State<FeedPage> {
   /// Evita mostrar el correo un instante antes de que llegue el nombre.
   bool _cargado = false;
 
+  /// HU-06, Escenario 14: cambios en publicaciones (reservada, vendida,
+  /// editada o borrada desde "Mis publicaciones" o el Detalle).
+  StreamSubscription<CambioPublicacion>? _cambios;
+
   @override
   void initState() {
     super.initState();
     _cargarPerfil();
+    final FeedCubit cubit = context.read<FeedCubit>();
+    _cambios = context
+        .read<AvisosPublicaciones>()
+        .cambios
+        .listen((cambio) => cubit.sincronizar(cambio.id, cambio.publicacion));
   }
 
   @override
   void dispose() {
+    _cambios?.cancel();
     _busqueda.dispose();
     super.dispose();
   }
