@@ -42,11 +42,18 @@ class PublicarArticuloPage extends StatefulWidget {
 
   /// HU-06: abre "Editar publicación". Devuelve la publicación guardada, o
   /// `null` si el estudiante regresó sin guardar.
-  static Future<Publicacion?> editar(BuildContext context, Publicacion publicacion) {
-    return Navigator.of(context).pushNamed<Publicacion>(
+  ///
+  /// OJO: se pide la ruta SIN tipo (`pushNamed`, no `pushNamed<Publicacion>`).
+  /// Las rutas del mapa `routes` de MaterialApp se crean como
+  /// `MaterialPageRoute<dynamic>`, y pedirlas con un tipo lanza un error de
+  /// tipos al abrir la pantalla (la app parecía congelarse). El resultado se
+  /// revisa aquí.
+  static Future<Publicacion?> editar(BuildContext context, Publicacion publicacion) async {
+    final Object? resultado = await Navigator.of(context).pushNamed(
       AppRoutes.editarPublicacion,
       arguments: publicacion,
     );
+    return resultado is Publicacion ? resultado : null;
   }
 
   @override
