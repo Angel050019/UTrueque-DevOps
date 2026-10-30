@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 
@@ -6,6 +7,7 @@ import '../theme/app_theme.dart';
 /// Si [esContrasena] es true, incluye el botón para mostrar u ocultar.
 /// Con [lineas] mayor a 1 sirve para textos largos (descripción) y con
 /// [prefijo] muestra un texto fijo antes del valor (por ejemplo `$`).
+/// [filtros] limita qué caracteres se pueden escribir (ver `FiltrosTexto`).
 class AppTextField extends StatefulWidget {
   const AppTextField({
     super.key,
@@ -19,6 +21,7 @@ class AppTextField extends StatefulWidget {
     this.lineas = 1,
     this.prefijo,
     this.onChanged,
+    this.filtros,
   });
 
   final TextEditingController controller;
@@ -31,6 +34,7 @@ class AppTextField extends StatefulWidget {
   final int lineas;
   final String? prefijo;
   final ValueChanged<String>? onChanged;
+  final List<TextInputFormatter>? filtros;
 
   @override
   State<AppTextField> createState() => _AppTextFieldState();
@@ -60,6 +64,7 @@ class _AppTextFieldState extends State<AppTextField> {
           minLines: widget.esContrasena ? 1 : widget.lineas,
           maxLines: widget.esContrasena ? 1 : widget.lineas,
           onChanged: widget.onChanged,
+          inputFormatters: widget.filtros,
           style: AppTexto.cuerpo(color: AppColores.texto),
           decoration: InputDecoration(
             hintText: widget.hint,

@@ -8,6 +8,7 @@ import '../../domain/entities/foto_articulo.dart';
 import '../../domain/entities/modalidad.dart';
 import '../../domain/entities/pagina_feed.dart';
 import '../../domain/errors/publicacion_failures.dart';
+import '../../domain/validators/publicacion_validator.dart';
 import '../models/publicacion_model.dart';
 
 /// Fuente de datos remota de publicaciones. Es la única capa de esta
@@ -214,6 +215,18 @@ class PublicacionRemoteDataSourceImpl implements PublicacionRemoteDataSource {
   Failure _traducir(PostgrestException e) {
     switch (e.code) {
       case '23514': // check: precio, fotos, longitudes o trigger de reglas
+        // SEGURIDAD: la base rechazó caracteres no permitidos; se marca el
+        // campo exacto con el mismo mensaje que da la app.
+        if (e.hint == 'titulo_caracteres') {
+          return const PublicacionInvalidaFailure(
+            {CampoPublicacion.titulo: PublicacionValidator.mensajeTituloCaracteres},
+          );
+        }
+        if (e.hint == 'descripcion_caracteres') {
+          return const PublicacionInvalidaFailure(
+            {CampoPublicacion.descripcion: PublicacionValidator.mensajeDescripcionCaracteres},
+          );
+        }
         return const PublicacionRechazadaFailure();
       case '23503': // llave foránea: la categoría no existe
         return const PublicacionInvalidaFailure(
