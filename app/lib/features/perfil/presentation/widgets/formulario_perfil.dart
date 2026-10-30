@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/app_ui.dart';
+import '../../../../core/widgets/filtros_texto.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../domain/entities/foto_perfil.dart';
 import '../cubit/perfil_cubit.dart';
@@ -102,6 +103,8 @@ class FormularioPerfil extends StatelessWidget {
                 label: 'Nombre a mostrar',
                 hint: 'Ej. Ana López',
                 habilitado: !guardando,
+                // SEGURIDAD: solo letras, espacios, punto y guion.
+                filtros: FiltrosTexto.nombre,
               ),
               const SizedBox(height: 6),
               ValueListenableBuilder<TextEditingValue>(

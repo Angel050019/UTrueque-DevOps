@@ -6,6 +6,7 @@ import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/app_ui.dart';
+import '../../../../core/widgets/filtros_texto.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../domain/entities/foto_articulo.dart';
 import '../../domain/entities/modalidad.dart';
@@ -165,6 +166,8 @@ class _PublicarArticuloPageState extends State<PublicarArticuloPage> {
                 label: 'Título',
                 hint: 'Ej. Calculadora Casio fx-991',
                 habilitado: !enviando,
+                // SEGURIDAD: solo los caracteres permitidos.
+                filtros: FiltrosTexto.titulo,
                 textoError: datos.errorDe(CampoPublicacion.titulo),
                 onChanged: (_) => cubit.campoEditado(CampoPublicacion.titulo),
               ),
@@ -176,6 +179,7 @@ class _PublicarArticuloPageState extends State<PublicarArticuloPage> {
                 hint: 'Estado, edición, detalles que deba saber quien lo reciba…',
                 lineas: 4,
                 habilitado: !enviando,
+                filtros: FiltrosTexto.descripcion,
                 textoError: datos.errorDe(CampoPublicacion.descripcion),
                 onChanged: (_) => cubit.campoEditado(CampoPublicacion.descripcion),
               ),
@@ -204,6 +208,7 @@ class _PublicarArticuloPageState extends State<PublicarArticuloPage> {
                   prefijo: r'$ ',
                   tipoTeclado: const TextInputType.numberWithOptions(decimal: true),
                   habilitado: !enviando,
+                  filtros: FiltrosTexto.precio,
                   textoError: datos.errorDe(CampoPublicacion.precio),
                   onChanged: (_) => cubit.campoEditado(CampoPublicacion.precio),
                 ),

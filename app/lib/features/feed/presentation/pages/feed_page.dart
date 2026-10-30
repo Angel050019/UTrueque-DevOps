@@ -8,6 +8,7 @@ import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_ui.dart';
 import '../../../../core/widgets/aviso_pantalla.dart';
+import '../../../../core/widgets/filtros_texto.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../auth/domain/entities/usuario.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
@@ -260,8 +261,12 @@ class _Buscador extends StatelessWidget {
       onChanged: onChanged,
       onSubmitted: onSubmitted,
       textInputAction: TextInputAction.search,
-      // SEGURIDAD: validación de entrada (la base también lo recorta).
-      inputFormatters: [LengthLimitingTextInputFormatter(FiltrosFeed.maximoCaracteres)],
+      // SEGURIDAD: validación de entrada: solo letras, números y espacios, y
+      // máximo 100 caracteres (la base también quita los signos y recorta).
+      inputFormatters: [
+        ...FiltrosTexto.busqueda,
+        LengthLimitingTextInputFormatter(FiltrosFeed.maximoCaracteres),
+      ],
       style: AppTexto.cuerpo(color: AppColores.texto),
       decoration: InputDecoration(
         hintText: 'Busca libros, calculadoras, batas…',

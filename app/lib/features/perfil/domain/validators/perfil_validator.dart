@@ -1,5 +1,6 @@
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
+import '../../../../core/utils/caracteres_permitidos.dart';
 import '../entities/carrera.dart';
 import '../entities/division.dart';
 import '../entities/foto_perfil.dart';
@@ -10,8 +11,12 @@ import '../entities/foto_perfil.dart';
 class PerfilValidator {
   const PerfilValidator();
 
+  /// SEGURIDAD: lista de caracteres permitidos (también la revisa la base).
+  static const String mensajeNombreCaracteres =
+      'Tu nombre solo puede tener letras, espacios, punto y guion.';
+
   /// Nombre obligatorio, de 3 a 50 caracteres (sin contar espacios de
-  /// sobra al inicio o al final).
+  /// sobra al inicio o al final) y solo con letras, espacios, punto y guion.
   Failure? validarNombre(String nombre) {
     final String limpio = nombre.trim();
     if (limpio.isEmpty) {
@@ -26,6 +31,9 @@ class PerfilValidator {
       return const NombreInvalidoFailure(
         'El nombre no puede tener más de ${AppConstants.nombreLongitudMaxima} caracteres.',
       );
+    }
+    if (!CaracteresPermitidos.esNombreValido(limpio)) {
+      return const NombreInvalidoFailure(mensajeNombreCaracteres);
     }
     return null;
   }

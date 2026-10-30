@@ -1,5 +1,6 @@
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
+import '../../../../core/utils/caracteres_permitidos.dart';
 import '../entities/borrador_publicacion.dart';
 import '../entities/categoria.dart';
 import '../entities/foto_articulo.dart';
@@ -20,6 +21,11 @@ class PublicacionValidator {
   static const String mensajeDescripcion = 'Escribe una descripción de '
       '${AppConstants.descripcionLongitudMinima} a '
       '${AppConstants.descripcionLongitudMaxima} caracteres.';
+  /// SEGURIDAD: lista de caracteres permitidos (también la revisa la base).
+  static const String mensajeTituloCaracteres = 'El título solo puede tener letras, números, '
+      'espacios y estos signos: ${CaracteresPermitidos.signosVisibles}';
+  static const String mensajeDescripcionCaracteres = 'La descripción solo puede tener letras, '
+      'números, espacios, saltos de línea y estos signos: ${CaracteresPermitidos.signosVisibles}';
   static const String mensajeCategoria = 'Elige una categoría.';
   static const String mensajeModalidad = 'Elige una modalidad.';
 
@@ -37,18 +43,27 @@ class PublicacionValidator {
   static final RegExp _precioSimple = RegExp(r'^\d{1,8}([.,]\d{1,2})?$');
   static final RegExp _precioConMiles = RegExp(r'^\d{1,3}(,\d{3}){1,2}(\.\d{1,2})?$');
 
-  String? validarTitulo(String titulo) =>
-      _enRango(titulo, AppConstants.tituloLongitudMinima, AppConstants.tituloLongitudMaxima)
-          ? null
-          : mensajeTitulo;
+  String? validarTitulo(String titulo) {
+    if (!_enRango(titulo, AppConstants.tituloLongitudMinima, AppConstants.tituloLongitudMaxima)) {
+      return mensajeTitulo;
+    }
+    if (!CaracteresPermitidos.esTituloValido(titulo.trim())) return mensajeTituloCaracteres;
+    return null;
+  }
 
-  String? validarDescripcion(String descripcion) => _enRango(
-        descripcion,
-        AppConstants.descripcionLongitudMinima,
-        AppConstants.descripcionLongitudMaxima,
-      )
-          ? null
-          : mensajeDescripcion;
+  String? validarDescripcion(String descripcion) {
+    if (!_enRango(
+      descripcion,
+      AppConstants.descripcionLongitudMinima,
+      AppConstants.descripcionLongitudMaxima,
+    )) {
+      return mensajeDescripcion;
+    }
+    if (!CaracteresPermitidos.esDescripcionValida(descripcion.trim())) {
+      return mensajeDescripcionCaracteres;
+    }
+    return null;
+  }
 
   String? validarCategoria(Categoria? categoria) => categoria == null ? mensajeCategoria : null;
 
