@@ -18,7 +18,8 @@ import 'features/auth/presentation/pages/confirmacion_registro_page.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/registro_page.dart';
 import 'features/auth/presentation/pages/splash_page.dart';
-import 'features/feed/presentation/pages/feed_placeholder_page.dart';
+import 'features/feed/presentation/cubit/feed_cubit.dart';
+import 'features/feed/presentation/pages/feed_page.dart';
 import 'features/perfil/data/datasources/perfil_remote_datasource.dart';
 import 'features/perfil/data/repositories/perfil_repository_impl.dart';
 import 'features/perfil/domain/repositories/perfil_repository.dart';
@@ -29,6 +30,23 @@ import 'features/perfil/presentation/cubit/perfil_cubit.dart';
 import 'features/perfil/presentation/pages/completar_perfil_page.dart';
 import 'features/perfil/presentation/pages/editar_perfil_page.dart';
 import 'features/perfil/presentation/pages/mi_perfil_page.dart';
+import 'features/publicaciones/data/datasources/publicacion_remote_datasource.dart';
+import 'features/publicaciones/data/repositories/publicacion_repository_impl.dart';
+import 'features/publicaciones/domain/entities/publicacion.dart';
+import 'features/publicaciones/domain/repositories/publicacion_repository.dart';
+import 'features/publicaciones/domain/usecases/buscar_publicaciones.dart';
+import 'features/publicaciones/domain/usecases/crear_publicacion.dart';
+import 'features/publicaciones/domain/usecases/editar_publicacion.dart';
+import 'features/publicaciones/domain/usecases/obtener_categorias.dart';
+import 'features/publicaciones/domain/usecases/obtener_detalle_publicacion.dart';
+import 'features/publicaciones/domain/usecases/obtener_mis_publicaciones.dart';
+import 'features/publicaciones/presentation/avisos_publicaciones.dart';
+import 'features/publicaciones/presentation/cubit/detalle_publicacion_cubit.dart';
+import 'features/publicaciones/presentation/cubit/mis_publicaciones_cubit.dart';
+import 'features/publicaciones/presentation/cubit/publicacion_cubit.dart';
+import 'features/publicaciones/presentation/pages/detalle_publicacion_page.dart';
+import 'features/publicaciones/presentation/pages/mis_publicaciones_page.dart';
+import 'features/publicaciones/presentation/pages/publicar_articulo_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,11 +62,15 @@ Future<void> main() async {
     publishableKey: const String.fromEnvironment(AppConstants.supabaseAnonKeyEnvKey),
   );
 
-  runApp(const UTruequeApp());
+  // HU-06: una sola instancia para toda la app. Avisa al Feed y a "Mis
+  // publicaciones" cuando una publicación cambia o se borra.
+  runApp(UTruequeApp(avisosPublicaciones: AvisosPublicaciones()));
 }
 
 class UTruequeApp extends StatelessWidget {
-  const UTruequeApp({super.key});
+  const UTruequeApp({super.key, required this.avisosPublicaciones});
+
+  final AvisosPublicaciones avisosPublicaciones;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +83,9 @@ class UTruequeApp extends StatelessWidget {
     final NetworkInfo networkInfo = NetworkInfoImpl(Connectivity());
     final PerfilRepository perfilRepository =
         PerfilRepositoryImpl(PerfilRemoteDataSourceImpl(Supabase.instance.client));
+    final PublicacionRepository publicacionRepository = PublicacionRepositoryImpl(
+      PublicacionRemoteDataSourceImpl(Supabase.instance.client),
+    );
 
     // Factory Method: cada pantalla de perfil recibe su propio PerfilCubit.
     PerfilCubit crearPerfilCubit() => PerfilCubit(
@@ -73,6 +98,11 @@ class UTruequeApp extends StatelessWidget {
       providers: [
         RepositoryProvider<AuthRepository>.value(value: authRepository),
         RepositoryProvider<PerfilRepository>.value(value: perfilRepository),
+        RepositoryProvider<PublicacionRepository>.value(value: publicacionRepository),
+        // HU-06: la hoja "Gestionar publicación" arma sus casos de uso con
+        // el repositorio y la red, y avisa de los cambios.
+        RepositoryProvider<NetworkInfo>.value(value: networkInfo),
+        RepositoryProvider<AvisosPublicaciones>.value(value: avisosPublicaciones),
       ],
       child: BlocProvider(
         create: (_) => AuthCubit(
@@ -90,7 +120,17 @@ class UTruequeApp extends StatelessWidget {
             AppRoutes.login: (_) => const LoginPage(),
             AppRoutes.registro: (_) => const RegistroPage(),
             AppRoutes.confirmacionRegistro: (_) => const ConfirmacionRegistroPage(),
-            AppRoutes.feedPrincipal: (_) => const FeedPlaceholderPage(),
+            // HU-04: Feed de publicaciones
+            AppRoutes.feedPrincipal: (_) => BlocProvider(
+                  create: (_) => FeedCubit(
+                    buscarPublicaciones: BuscarPublicaciones(publicacionRepository, networkInfo),
+                    // HU-05: opciones de los filtros y "Mi carrera" por defecto.
+                    obtenerCategorias: ObtenerCategorias(publicacionRepository, networkInfo),
+                    obtenerCatalogo: ObtenerCatalogoAcademico(perfilRepository, networkInfo),
+                    obtenerPerfil: ObtenerPerfil(perfilRepository, networkInfo),
+                  )..cargar(),
+                  child: const FeedPage(),
+                ),
             // HU-02: Perfil Académico
             AppRoutes.completarPerfil: (_) => BlocProvider(
                   create: (_) => crearPerfilCubit()..cargarMiPerfil(),
@@ -104,6 +144,47 @@ class UTruequeApp extends StatelessWidget {
                   create: (_) => crearPerfilCubit()..cargarMiPerfil(),
                   child: const EditarPerfilPage(),
                 ),
+            // HU-03: Publicación de artículo
+            AppRoutes.publicarArticulo: (_) => BlocProvider(
+                  create: (_) => PublicacionCubit(
+                    obtenerCategorias: ObtenerCategorias(publicacionRepository, networkInfo),
+                    crearPublicacion: CrearPublicacion(publicacionRepository, networkInfo),
+                  )..cargarCategorias(),
+                  child: const PublicarArticuloPage(),
+                ),
+            // HU-04: Detalle de la publicación
+            AppRoutes.detallePublicacion: (context) {
+              final DetallePublicacionArgs args =
+                  ModalRoute.of(context)?.settings.arguments as DetallePublicacionArgs;
+              return BlocProvider(
+                create: (_) => DetallePublicacionCubit(
+                  ObtenerDetallePublicacion(publicacionRepository, networkInfo),
+                  idPublicacion: args.id,
+                  idUsuarioActual: authRepository.usuarioActual?.id,
+                )..cargar(),
+                child: DetallePublicacionPage(alCambiar: args.alCambiar),
+              );
+            },
+            // HU-06: Gestión de "Mis publicaciones"
+            AppRoutes.misPublicaciones: (_) => BlocProvider(
+                  create: (_) => MisPublicacionesCubit(
+                    ObtenerMisPublicaciones(publicacionRepository, networkInfo),
+                  )..cargar(),
+                  child: const MisPublicacionesPage(),
+                ),
+            AppRoutes.editarPublicacion: (context) {
+              final Publicacion original =
+                  ModalRoute.of(context)?.settings.arguments as Publicacion;
+              return BlocProvider(
+                create: (_) => PublicacionCubit(
+                  obtenerCategorias: ObtenerCategorias(publicacionRepository, networkInfo),
+                  crearPublicacion: CrearPublicacion(publicacionRepository, networkInfo),
+                  editarPublicacion: EditarPublicacion(publicacionRepository, networkInfo),
+                  original: original,
+                )..cargarCategorias(),
+                child: PublicarArticuloPage(original: original),
+              );
+            },
           },
         ),
       ),

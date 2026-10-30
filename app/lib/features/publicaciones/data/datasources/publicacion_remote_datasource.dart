@@ -1,0 +1,397 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../../core/constants/app_constants.dart';
+import '../../../../core/errors/failures.dart';
+import '../../../../core/utils/formato_imagen.dart';
+import '../../domain/entities/estado_publicacion.dart';
+import '../../domain/entities/filtros_feed.dart';
+import '../../domain/entities/foto_articulo.dart';
+import '../../domain/entities/modalidad.dart';
+import '../../domain/entities/pagina_feed.dart';
+import '../../domain/errors/publicacion_failures.dart';
+import '../../domain/validators/publicacion_validator.dart';
+import '../models/publicacion_model.dart';
+
+/// Fuente de datos remota de publicaciones. Es la única capa de esta
+/// feature que importa `supabase_flutter`; traduce sus excepciones a
+/// [Failure]s con mensajes en español que no revelan detalles internos.
+abstract class PublicacionRemoteDataSource {
+  Future<PaginaFeed> buscarPublicaciones({
+    FiltrosFeed filtros = const FiltrosFeed(),
+    CursorFeed? despuesDe,
+    required int limite,
+  });
+  Future<PublicacionModel> obtenerDetalle(String id);
+  Future<List<CategoriaModel>> obtenerCategorias();
+  Future<String> subirFoto(FotoArticulo foto);
+  Future<void> eliminarFotos(List<String> rutas);
+  Future<PublicacionModel> crearPublicacion({
+    required String titulo,
+    required String descripcion,
+    required int categoriaId,
+    required Modalidad modalidad,
+    required double? precio,
+    required List<String> fotos,
+  });
+
+  // HU-06: Gestión de "Mis publicaciones"
+  Future<PaginaFeed> obtenerMisPublicaciones({
+    required bool finalizadas,
+    CursorFeed? despuesDe,
+    required int limite,
+  });
+  Future<PublicacionModel> cambiarEstado(String id, EstadoPublicacion nuevo);
+  Future<PublicacionModel> editarPublicacion({
+    required String id,
+    required String titulo,
+    required String descripcion,
+    required int categoriaId,
+    required Modalidad modalidad,
+    required double? precio,
+    required List<String> fotos,
+  });
+  Future<List<String>> borrarPublicacion(String id);
+}
+
+class PublicacionRemoteDataSourceImpl implements PublicacionRemoteDataSource {
+  PublicacionRemoteDataSourceImpl(this._client, {DateTime Function()? reloj})
+      : _reloj = reloj ?? DateTime.now;
+
+  final SupabaseClient _client;
+  final DateTime Function() _reloj;
+
+  /// Distingue fotos subidas en el mismo instante.
+  int _contador = 0;
+
+  String get _idUsuarioActual {
+    final String? id = _client.auth.currentUser?.id;
+    if (id == null) throw const SesionNoIniciadaFailure();
+    return id;
+  }
+
+  StorageFileApi get _bucket => _client.storage.from(AppConstants.bucketPublicaciones);
+
+  /// HU-04 y HU-05: una página del Feed con la función
+  /// `buscar_publicaciones` (`POST /rest/v1/rpc/buscar_publicaciones`). La
+  /// base ya filtra las Vendidas, aplica la búsqueda y los filtros, ordena
+  /// de la más nueva a la más vieja y une la categoría y el perfil público
+  /// del dueño. Solo se mandan los filtros que están puestos.
+  @override
+  Future<PaginaFeed> buscarPublicaciones({
+    FiltrosFeed filtros = const FiltrosFeed(),
+    CursorFeed? despuesDe,
+    required int limite,
+  }) async {
+    // Si no hay sesión, no tiene caso llamar al API (el Feed es solo para
+    // estudiantes autenticados).
+    if (_client.auth.currentUser == null) throw const SesionNoIniciadaFailure();
+    // SEGURIDAD: validación de entrada. Sin espacios de más y máximo 100
+    // caracteres (la base vuelve a recortar y quita los signos).
+    final String texto = FiltrosFeed.normalizarTexto(filtros.texto);
+    try {
+      final List<dynamic> respuesta = await _client.rpc<List<dynamic>>(
+        PublicacionModel.funcionBuscar,
+        params: <String, dynamic>{
+          'p_limite': limite,
+          if (texto.isNotEmpty) 'p_texto': texto,
+          if (filtros.categoriaId != null) 'p_categoria_id': filtros.categoriaId,
+          if (filtros.divisionId != null) 'p_division_id': filtros.divisionId,
+          if (filtros.carreraId != null) 'p_carrera_id': filtros.carreraId,
+          if (despuesDe != null) 'p_antes_de': despuesDe.fecha,
+          if (despuesDe != null) 'p_antes_id': despuesDe.id,
+        },
+      );
+      return _pagina(respuesta, limite);
+    } on PostgrestException {
+      // SEGURIDAD: mensaje genérico, sin detalles internos.
+      throw const CargarPublicacionesFailure();
+    }
+  }
+
+  /// Convierte las filas de una función paginada (Feed o Mis publicaciones)
+  /// en una página. Si llegó la página completa puede haber más: el cursor
+  /// es la última publicación, con su fecha tal como la mandó el servidor.
+  PaginaFeed _pagina(List<dynamic> respuesta, int limite) {
+    final List<Map<String, dynamic>> filas =
+        respuesta.cast<Map<String, dynamic>>().toList(growable: false);
+    final List<PublicacionModel> publicaciones = filas
+        .map((fila) => PublicacionModel.fromMap(fila, urlFoto: _bucket.getPublicUrl))
+        .toList(growable: false);
+    final CursorFeed? siguiente = filas.length < limite
+        ? null
+        : CursorFeed(fecha: filas.last['created_at'] as String, id: filas.last['id'] as String);
+    return PaginaFeed(publicaciones: publicaciones, siguiente: siguiente);
+  }
+
+  /// HU-04: detalle desde la vista `publicaciones_detalle`
+  /// (`GET /rest/v1/publicaciones_detalle?id=eq.<id>`). Si la respuesta
+  /// llega vacía, la publicación ya se borró.
+  @override
+  Future<PublicacionModel> obtenerDetalle(String id) async {
+    if (_client.auth.currentUser == null) throw const SesionNoIniciadaFailure();
+    try {
+      final List<Map<String, dynamic>> filas = await _client
+          .from(PublicacionModel.vistaDetalle)
+          .select()
+          .eq('id', id)
+          .limit(1);
+      if (filas.isEmpty) throw const PublicacionNoEncontradaFailure();
+      return PublicacionModel.fromMap(filas.first, urlFoto: _bucket.getPublicUrl);
+    } on PostgrestException catch (e) {
+      // Un id con formato inválido (22P02) es lo mismo que "no existe".
+      if (e.code == '22P02') throw const PublicacionNoEncontradaFailure();
+      throw const CargarPublicacionesFailure();
+    }
+  }
+
+  @override
+  Future<List<CategoriaModel>> obtenerCategorias() async {
+    try {
+      final List<Map<String, dynamic>> filas = await _client
+          .from(AppConstants.tablaCategorias)
+          .select(CategoriaModel.columnasSelect)
+          .eq('activo', true)
+          // Ojo: en supabase-dart `order` es descendente por defecto.
+          .order('orden', ascending: true)
+          .order('nombre', ascending: true);
+      return filas.map(CategoriaModel.fromMap).toList(growable: false);
+    } on PostgrestException catch (e) {
+      throw _traducir(e);
+    }
+  }
+
+  @override
+  Future<String> subirFoto(FotoArticulo foto) async {
+    final FormatoImagen? formato = foto.formato;
+    if (formato == null) throw const FotoFormatoInvalidoFailure();
+
+    // SEGURIDAD: mínimo privilegio (cada quien escribe solo en su carpeta).
+    // publicaciones/<id del usuario>/<marca de tiempo>_<n>.<ext>
+    // Las políticas de Storage solo permiten escribir en la carpeta propia,
+    // y la base revisa que las rutas de `fotos` estén en esa carpeta.
+    final String ruta = '$_idUsuarioActual/'
+        '${_reloj().microsecondsSinceEpoch}_${_contador++}.${formato.extension}';
+    try {
+      await _bucket.uploadBinary(
+        ruta,
+        foto.bytes,
+        fileOptions: FileOptions(contentType: formato.contentType),
+      );
+      return ruta;
+    } on StorageException catch (e) {
+      switch (e.statusCode) {
+        case '413':
+          throw const FotoArticuloDemasiadoGrandeFailure();
+        case '415':
+          throw const FotoFormatoInvalidoFailure();
+        case '403':
+          throw const ServidorFailure('No tienes permiso para subir fotos en esa carpeta.');
+        default:
+          throw const ServidorFailure('No se pudo subir la foto. Inténtalo de nuevo.');
+      }
+    }
+  }
+
+  @override
+  Future<void> eliminarFotos(List<String> rutas) async {
+    if (rutas.isEmpty) return;
+    try {
+      await _bucket.remove(rutas);
+    } on StorageException {
+      throw const ServidorFailure('No se pudieron borrar las fotos.');
+    }
+  }
+
+  @override
+  Future<PublicacionModel> crearPublicacion({
+    required String titulo,
+    required String descripcion,
+    required int categoriaId,
+    required Modalidad modalidad,
+    required double? precio,
+    required List<String> fotos,
+  }) async {
+    // Si no hay sesión, no tiene caso llamar al API.
+    if (_client.auth.currentUser == null) throw const SesionNoIniciadaFailure();
+    try {
+      final Map<String, dynamic> fila = await _client
+          .from(AppConstants.tablaPublicaciones)
+          .insert(PublicacionModel.paraCrear(
+            titulo: titulo,
+            descripcion: descripcion,
+            categoriaId: categoriaId,
+            modalidad: modalidad,
+            precio: precio,
+            fotos: fotos,
+          ))
+          .select(PublicacionModel.columnasSelect)
+          .single();
+      return PublicacionModel.fromMap(fila);
+    } on PostgrestException catch (e) {
+      throw _traducir(e);
+    }
+  }
+
+  // -------------------------------------------------------------------
+  // HU-06: Gestión de "Mis publicaciones"
+  // -------------------------------------------------------------------
+
+  /// HU-06: una página de mis publicaciones con la función
+  /// `mis_publicaciones` (`POST /rest/v1/rpc/mis_publicaciones`).
+  /// SEGURIDAD: no se manda el id del dueño; el servidor lo toma de la
+  /// sesión, así nadie puede pedir la lista completa de otro estudiante.
+  @override
+  Future<PaginaFeed> obtenerMisPublicaciones({
+    required bool finalizadas,
+    CursorFeed? despuesDe,
+    required int limite,
+  }) async {
+    if (_client.auth.currentUser == null) throw const SesionNoIniciadaFailure();
+    try {
+      final List<dynamic> respuesta = await _client.rpc<List<dynamic>>(
+        PublicacionModel.funcionMisPublicaciones,
+        params: <String, dynamic>{
+          'p_limite': limite,
+          if (finalizadas) 'p_finalizadas': true,
+          if (despuesDe != null) 'p_antes_de': despuesDe.fecha,
+          if (despuesDe != null) 'p_antes_id': despuesDe.id,
+        },
+      );
+      return _pagina(respuesta, limite);
+    } on PostgrestException {
+      // SEGURIDAD: mensaje genérico, sin detalles internos.
+      throw const CargarMisPublicacionesFailure();
+    }
+  }
+
+  /// HU-06: `PATCH /rest/v1/publicaciones?id=eq.<id>` con SOLO el estado
+  /// nuevo. El servidor revisa la transición contra el estado real.
+  @override
+  Future<PublicacionModel> cambiarEstado(String id, EstadoPublicacion nuevo) =>
+      _actualizar(id, PublicacionModel.paraCambiarEstado(nuevo));
+
+  /// HU-06: `PATCH /rest/v1/publicaciones?id=eq.<id>` con los datos
+  /// editados (sin dueño ni estado).
+  @override
+  Future<PublicacionModel> editarPublicacion({
+    required String id,
+    required String titulo,
+    required String descripcion,
+    required int categoriaId,
+    required Modalidad modalidad,
+    required double? precio,
+    required List<String> fotos,
+  }) {
+    return _actualizar(
+      id,
+      PublicacionModel.paraEditar(
+        titulo: titulo,
+        descripcion: descripcion,
+        categoriaId: categoriaId,
+        modalidad: modalidad,
+        precio: precio,
+        fotos: fotos,
+      ),
+    );
+  }
+
+  /// HU-06: `DELETE /rest/v1/publicaciones?id=eq.<id>` y devuelve las rutas
+  /// de sus fotos para borrarlas de Storage.
+  @override
+  Future<List<String>> borrarPublicacion(String id) async {
+    if (_client.auth.currentUser == null) throw const SesionNoIniciadaFailure();
+    try {
+      final List<Map<String, dynamic>> filas =
+          await _client.from(AppConstants.tablaPublicaciones).delete().eq('id', id).select('fotos');
+      // SEGURIDAD: con RLS, borrar una publicación ajena no da error: el
+      // servidor simplemente no borra nada (0 filas).
+      if (filas.isEmpty) throw const ModificarSinPermisoFailure();
+      return ((filas.first['fotos'] as List<dynamic>?) ?? const <dynamic>[])
+          .cast<String>()
+          .toList(growable: false);
+    } on PostgrestException catch (e) {
+      throw _traducirGestion(e);
+    }
+  }
+
+  /// Actualiza la publicación [id] y devuelve cómo quedó, con su categoría
+  /// y el perfil del dueño (vista `publicaciones_detalle`). Si esa segunda
+  /// lectura falla, el cambio ya se guardó: se devuelve la fila actualizada.
+  Future<PublicacionModel> _actualizar(String id, Map<String, dynamic> cambios) async {
+    if (_client.auth.currentUser == null) throw const SesionNoIniciadaFailure();
+    final List<Map<String, dynamic>> filas;
+    try {
+      filas = await _client
+          .from(AppConstants.tablaPublicaciones)
+          .update(cambios)
+          .eq('id', id)
+          .select(PublicacionModel.columnasSelect);
+    } on PostgrestException catch (e) {
+      throw _traducirGestion(e);
+    }
+    // SEGURIDAD: con RLS, modificar una publicación ajena no da error: el
+    // servidor simplemente no cambia nada (0 filas).
+    if (filas.isEmpty) throw const ModificarSinPermisoFailure();
+    try {
+      return await obtenerDetalle(id);
+    } catch (_) {
+      return PublicacionModel.fromMap(filas.first, urlFoto: _bucket.getPublicUrl);
+    }
+  }
+
+  /// SEGURIDAD: errores de HU-06 sin detalles internos. La base manda una
+  /// "pista" fija (hint) cuando el patrón State rechaza la acción.
+  Failure _traducirGestion(PostgrestException e) {
+    if (e.code == '23514' && _pistasDeEstado.contains(e.hint)) {
+      return const AccionNoPermitidaFailure();
+    }
+    switch (e.code) {
+      case '22P02': // id con formato inválido: es lo mismo que "no existe"
+        return const PublicacionNoEncontradaFailure();
+      case '42501': // RLS: la publicación no es del estudiante
+        return const ModificarSinPermisoFailure();
+      case '23514': // check: precio, fotos o longitudes al editar
+      case '23503': // llave foránea: la categoría no existe
+        return _traducir(e);
+      default:
+        return const GestionarPublicacionFailure();
+    }
+  }
+
+  /// Pistas que manda el trigger de la base (migración de HU-06).
+  static const Set<String> _pistasDeEstado = <String>{
+    'transicion_no_permitida',
+    'publicacion_no_editable',
+    'publicacion_no_borrable',
+  };
+
+  /// SEGURIDAD: errores sin detalles internos (no se muestran nombres de
+  /// tablas, reglas ni direcciones del servidor).
+  /// Traduce los códigos de error de Postgres a fallos entendibles.
+  Failure _traducir(PostgrestException e) {
+    switch (e.code) {
+      case '23514': // check: precio, fotos, longitudes o trigger de reglas
+        // SEGURIDAD: la base rechazó caracteres no permitidos; se marca el
+        // campo exacto con el mismo mensaje que da la app.
+        if (e.hint == 'titulo_caracteres') {
+          return const PublicacionInvalidaFailure(
+            {CampoPublicacion.titulo: PublicacionValidator.mensajeTituloCaracteres},
+          );
+        }
+        if (e.hint == 'descripcion_caracteres') {
+          return const PublicacionInvalidaFailure(
+            {CampoPublicacion.descripcion: PublicacionValidator.mensajeDescripcionCaracteres},
+          );
+        }
+        return const PublicacionRechazadaFailure();
+      case '23503': // llave foránea: la categoría no existe
+        return const PublicacionInvalidaFailure(
+          {CampoPublicacion.categoria: 'La categoría seleccionada no existe.'},
+        );
+      case '42501': // RLS: perfil incompleto o publicación ajena
+        return const PublicarSinPermisoFailure();
+      default:
+        return const ServidorFailure();
+    }
+  }
+}

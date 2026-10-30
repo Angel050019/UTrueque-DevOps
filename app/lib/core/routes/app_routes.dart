@@ -8,12 +8,23 @@ class AppRoutes {
   static const String registro = '/registro';
   static const String confirmacionRegistro = '/registro/confirmacion';
 
-  /// Placeholder temporal: el Feed principal se implementará en el
-  /// Sprint 2 (HU-05). Por ahora solo confirma que el login funcionó.
+  /// HU-04: Feed principal de publicaciones.
   static const String feedPrincipal = '/feed';
 
   // HU-02: Perfil Académico
   static const String completarPerfil = '/perfil/completar';
   static const String miPerfil = '/perfil';
   static const String editarPerfil = '/perfil/editar';
+
+  // HU-03: Publicación de artículo
+  static const String publicarArticulo = '/publicar';
+
+  // HU-04: Feed de publicaciones. Recibe un `DetallePublicacionArgs`.
+  static const String detallePublicacion = '/publicacion';
+
+  // HU-06: Gestión de "Mis publicaciones"
+  static const String misPublicaciones = '/mis-publicaciones';
+
+  /// Recibe la `Publicacion` que se va a editar.
+  static const String editarPublicacion = '/publicacion/editar';
 }

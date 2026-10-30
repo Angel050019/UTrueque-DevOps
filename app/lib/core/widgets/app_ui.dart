@@ -95,7 +95,14 @@ class EnlaceTexto extends StatelessWidget {
 }
 
 /// Muestra un mensaje flotante en la parte de abajo.
-void mostrarMensaje(BuildContext context, String texto, {bool esError = false}) {
+/// [icono] cambia el ícono de la izquierda (por defecto: palomita, o el de
+/// error si [esError]).
+void mostrarMensaje(
+  BuildContext context,
+  String texto, {
+  bool esError = false,
+  IconData? icono,
+}) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(
@@ -107,7 +114,7 @@ void mostrarMensaje(BuildContext context, String texto, {bool esError = false}) 
         content: Row(
           children: [
             Icon(
-              esError ? Icons.error_rounded : Icons.check_circle_rounded,
+              icono ?? (esError ? Icons.error_rounded : Icons.check_circle_rounded),
               color: esError ? AppColores.errorSuave : AppColores.acento,
             ),
             const SizedBox(width: 12),
