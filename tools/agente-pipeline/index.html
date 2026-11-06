@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agente del pipeline · UTrueque</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<!--
+  Agente del Pipeline CI - UTrueque
+  Página única, sin dependencias. Ábrela en Chrome (doble clic) o sírvela con
+  `python -m http.server`. Lee GitHub Actions por su API REST pública.
+  Ver README.md en esta carpeta.
+-->
+<style>
+  /* Paleta tomada de app/lib/core/theme/app_theme.dart */
+  :root {
+    --primario: #033B56;
+    --primario-oscuro: #022A3E;
+    --primario-suave: #E2EDF2;
+    --acento: #96FCCA;
+    --acento-suave: #E7FEF3;
+    --fondo: #F5F8FA;
+    --superficie: #FFFFFF;
+    --texto: #0B2533;
+    --texto-2: #5A6B76;
+    --borde: #D6E0E6;
+    --error: #C62828;
+    --error-suave: #FDECEC;
+    --aviso: #9A6400;
+    --aviso-suave: #FFF4DC;
+    --riel: #C9D7DF;
+    --exito: #0E7A4D;
+    --activo: #033B56;
+    --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --cuerpo: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fondo: #011C29;
+      --superficie: #022A3E;
+      --primario-suave: #08384F;
+      --texto: #E8F1F5;
+      --texto-2: #9DB3BF;
+      --borde: #0D4560;
+      --riel: #11506D;
+      --acento-suave: #0B3B33;
+      --error-suave: #3A1518;
+      --aviso-suave: #3A2A08;
+      --exito: #7EF0B8;
+      --error: #FF8A80;
+      --aviso: #FFC861;
+      --activo: #96FCCA;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--fondo);
+    color: var(--texto);
+    font: 16px/1.5 var(--cuerpo);
+    min-height: 100vh;
+  }
+  a { color: inherit; }
+  button, input, select { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; border-radius: 6px; }
+
+  /* ---------- Barra superior ---------- */
+  .barra {
+    background: var(--primario);
+    color: #fff;
+    padding: 14px 24px;
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  }
+  .marca { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+  .marca img { height: 34px; width: auto; background: #fff; border-radius: 8px; padding: 3px 6px; }
+  .marca h1 { font: 700 1.25rem/1.1 var(--display); margin: 0; letter-spacing: -0.01em; }
+  .marca small { display: block; font: 400 .85rem var(--cuerpo); color: #B9D3DF; }
+  .vivo {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-weight: 600; font-size: .9rem;
+  }
+  .vivo i { width: 10px; height: 10px; border-radius: 50%; background: #7C93A0; display: inline-block; }
+  .vivo[data-estado="vivo"] i { background: var(--acento); box-shadow: 0 0 0 0 rgba(150,252,202,.7); animation: latido 1.6s infinite; }
+  .vivo[data-estado="repeticion"] i { background: #FFC861; }
+  .vivo[data-estado="error"] i { background: #FF8A80; }
+  @keyframes latido { 70% { box-shadow: 0 0 0 9px rgba(150,252,202,0); } 100% { box-shadow: 0 0 0 0 rgba(150,252,202,0); } }
+  .boton {
+    border: 1.5px solid rgba(255,255,255,.45); background: transparent; color: #fff;
+    padding: 7px 14px; border-radius: 999px; cursor: pointer; font-weight: 600; font-size: .9rem;
+  }
+  .boton:hover { background: rgba(255,255,255,.1); }
+  .boton.lleno { background: var(--acento); color: var(--primario-oscuro); border-color: var(--acento); }
+  .boton.lleno:hover { filter: brightness(1.05); }
+  .boton[aria-pressed="true"] { background: rgba(150,252,202,.18); border-color: var(--acento); }
+
+  /* ---------- Ajustes ---------- */
+  details.ajustes { background: var(--primario-oscuro); color: #E2EDF2; }
+  details.ajustes summary { cursor: pointer; padding: 8px 24px; font-size: .9rem; color: #B9D3DF; }
+  .ajustes .campos { display: flex; flex-wrap: wrap; gap: 14px 22px; padding: 4px 24px 16px; align-items: end; }
+  .ajustes label { display: grid; gap: 4px; font-size: .85rem; }
+  .ajustes input {
+    background: #01202F; border: 1px solid #1B5875; border-radius: 8px; padding: 7px 10px; min-width: 230px; color: #fff;
+  }
+  .ajustes p { margin: 0; font-size: .82rem; color: #9DB3BF; max-width: 60ch; }
+
+  /* ---------- Contenido ---------- */
+  main {
+    max-width: 1200px; margin: 0 auto; padding: 28px 24px 40px;
+    display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px;
+  }
+  main > * { min-width: 0; }
+  body { overflow-x: hidden; }
+  .corrida { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: end; }
+  .corrida h2 { font: 700 clamp(1.5rem, 3vw, 2.2rem)/1.1 var(--display); margin: 0; letter-spacing: -0.02em; max-width: 30ch; }
+  .meta { color: var(--texto-2); font-size: .95rem; display: flex; flex-wrap: wrap; gap: 6px 14px; }
+  .meta span { white-space: nowrap; }
+  .meta a { color: var(--texto-2); }
+  .etiqueta-rama { background: var(--primario-suave); color: var(--texto); padding: 1px 8px; border-radius: 6px; font-weight: 600; }
+
+  .reloj { text-align: right; }
+  .reloj .grande { font: 700 2.6rem/1 var(--display); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  .reloj .chico { color: var(--texto-2); font-size: .9rem; }
+
+  .avance { grid-column: 1 / -1; height: 10px; border-radius: 999px; background: var(--primario-suave); overflow: hidden; }
+  .avance div { height: 100%; width: 0; background: var(--activo); transition: width .6s ease; }
+  .avance[data-res="success"] div { background: var(--exito); }
+  .avance[data-res="failure"] div { background: var(--error); }
+
+  /* ---------- Riel del pipeline (el elemento protagonista) ---------- */
+  .riel-caja h3, .agente h3 { font: 700 1.1rem var(--display); margin: 0 0 14px; }
+  .job-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .job-tabs button { border: 1px solid var(--borde); background: var(--superficie); border-radius: 8px; padding: 4px 10px; cursor: pointer; }
+  .job-tabs button[aria-pressed="true"] { background: var(--primario); color: #fff; border-color: var(--primario); }
+
+  ol.riel { list-style: none; margin: 0; padding: 0; position: relative; counter-reset: paso; }
+  ol.riel li {
+    position: relative; display: grid; grid-template-columns: 44px 1fr auto; gap: 0 14px;
+    padding: 0 0 18px; min-height: 58px;
+  }
+  /* tramo de vía entre estaciones */
+  ol.riel li::before {
+    content: ""; position: absolute; left: 20px; top: 34px; bottom: -4px; width: 4px;
+    background: var(--riel); border-radius: 2px;
+  }
+  ol.riel li:last-child::before { display: none; }
+  ol.riel li[data-estado="exito"]::before,
+  ol.riel li[data-estado="omitido"]::before { background: var(--exito); }
+  ol.riel li[data-estado="en-curso"]::before {
+    background: linear-gradient(var(--activo) 0 0) top / 100% var(--llenado, 0%) no-repeat, var(--riel);
+  }
+  .estacion {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: grid; place-items: center; z-index: 1;
+    background: var(--superficie); border: 3px solid var(--riel);
+    font: 700 .95rem var(--display); color: var(--texto-2);
+  }
+  .estacion svg { width: 22px; height: 22px; }
+  li[data-estado="exito"] .estacion { background: var(--exito); border-color: var(--exito); color: #fff; }
+  li[data-estado="falla"] .estacion { background: var(--error); border-color: var(--error); color: #fff; }
+  li[data-estado="omitido"] .estacion { border-style: dashed; border-color: var(--exito); color: var(--exito); }
+  li[data-estado="cancelado"] .estacion { border-color: var(--texto-2); }
+  ol.riel li[data-tras-falla="1"]::before { background: var(--riel); }
+  li[data-tras-falla="1"] .estacion { border-color: var(--riel); color: var(--texto-2); }
+  li[data-tras-falla="1"] .paso-nombre { color: var(--texto-2); font-weight: 500; }
+  li[data-estado="en-curso"] .estacion {
+    border-color: var(--primario); color: var(--primario); background: var(--acento);
+    animation: estacion 1.4s ease-in-out infinite;
+  }
+  @media (prefers-color-scheme: dark) {
+    li[data-estado="exito"] .estacion { color: var(--primario-oscuro); }
+    li[data-estado="falla"] .estacion { color: var(--primario-oscuro); }
+  }
+  @keyframes estacion { 50% { transform: scale(1.08); } }
+  .paso-nombre { font-weight: 600; padding-top: 2px; }
+  .paso-desc { color: var(--texto-2); font-size: .9rem; max-width: 60ch; }
+  li[data-estado="pendiente"] .paso-nombre { color: var(--texto-2); font-weight: 500; }
+  .paso-tiempo { text-align: right; font-variant-numeric: tabular-nums; padding-top: 2px; white-space: nowrap; }
+  .paso-tiempo small { display: block; color: var(--texto-2); font-size: .8rem; }
+  li[data-lento="1"] .paso-tiempo { color: var(--aviso); font-weight: 600; }
+  .paso-detalle { grid-column: 2 / -1; display: none; }
+  li[data-estado="en-curso"] .paso-detalle, li[data-estado="falla"] .paso-detalle, li[data-estado="omitido"] .paso-detalle { display: block; }
+
+  /* ---------- Agente ---------- */
+  .agente { display: flex; flex-direction: column; min-height: 0; }
+  .agente-cabeza { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .agente-cabeza h3 { margin: 0; }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 12px; background: var(--primario); display: grid; place-items: center; flex: none;
+  }
+  .avatar svg { width: 24px; height: 24px; }
+  .agente-cabeza p { margin: 0; color: var(--texto-2); font-size: .85rem; }
+  .diagnostico {
+    border-radius: 14px; padding: 14px 16px; margin-bottom: 14px; background: var(--acento-suave);
+    border-left: 6px solid var(--exito);
+  }
+  .diagnostico[data-tono="error"] { background: var(--error-suave); border-color: var(--error); }
+  .diagnostico[data-tono="aviso"] { background: var(--aviso-suave); border-color: var(--aviso); }
+  .diagnostico[data-tono="info"] { background: var(--primario-suave); border-color: var(--primario); }
+  .diagnostico strong { display: block; font: 700 1.05rem var(--display); margin-bottom: 4px; }
+  .diagnostico p { margin: 0; }
+  .diagnostico ul { margin: 6px 0 0; padding-left: 18px; }
+  .diagnostico a { font-weight: 600; }
+  .bitacora {
+    list-style: none; margin: 0; padding: 0; overflow-y: auto; max-height: 520px;
+    border-top: 1px solid var(--borde);
+  }
+  .bitacora li { overflow-wrap: anywhere; display: grid; grid-template-columns: 64px 1fr; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--borde); }
+  .bitacora time { color: var(--texto-2); font-size: .8rem; font-variant-numeric: tabular-nums; padding-top: 2px; }
+  .bitacora li[data-tono="error"] span { color: var(--error); font-weight: 600; }
+  .bitacora li[data-tono="aviso"] span { color: var(--aviso); }
+  .bitacora li[data-tono="exito"] span { color: var(--exito); font-weight: 600; }
+  .bitacora li.nuevo { animation: entra .5s ease-out; }
+  @keyframes entra { from { background: var(--acento-suave); } }
+
+  /* ---------- Corridas recientes ---------- */
+  .recientes { grid-column: 1 / -1; }
+  .recientes h3 { font: 700 1.1rem var(--display); margin: 0 0 10px; }
+  .recientes ul { list-style: none; margin: 0; padding: 0; display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; }
+  .recientes button {
+    border: 1.5px solid var(--borde); background: var(--superficie); border-radius: 12px; padding: 8px 12px;
+    cursor: pointer; text-align: left; min-width: 150px; display: grid; gap: 2px;
+  }
+  .recientes button[aria-pressed="true"] { border-color: var(--primario); box-shadow: inset 0 0 0 1px var(--primario); }
+  .recientes b { font-family: var(--display); }
+  .recientes small { color: var(--texto-2); }
+  .punto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: var(--texto-2); }
+  .punto.success { background: var(--exito); } .punto.failure { background: var(--error); }
+  .punto.in_progress, .punto.queued { background: #2B8CC4; }
+
+  .controles { grid-column: 1 / -1; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; color: var(--texto-2); font-size: .9rem; }
+  .controles .boton { color: var(--texto); border-color: var(--borde); }
+  .controles .boton:hover { background: var(--primario-suave); }
+  .controles select { border: 1px solid var(--borde); background: var(--superficie); border-radius: 8px; padding: 5px 8px; }
+  .vacio { color: var(--texto-2); }
+
+  @media (max-width: 860px) {
+    main { grid-template-columns: 1fr; padding: 20px 16px 32px; }
+    .corrida { grid-template-columns: 1fr; }
+    .reloj { text-align: left; }
+    .barra { padding: 12px 16px; }
+    details.ajustes summary, .ajustes .campos { padding-left: 16px; padding-right: 16px; }
+    .ajustes input { min-width: 0; width: 100%; }
+    .ajustes label { flex: 1 1 100%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<header class="barra">
+  <div class="marca">
+    <img src="../../app/assets/images/logo_utrueque.png" alt="" onerror="this.remove()">
+    <div>
+      <h1>Agente del pipeline</h1>
+      <small id="repo-texto">UTrueque · GitHub Actions</small>
+    </div>
+  </div>
+  <span class="vivo" id="vivo" data-estado="conectando"><i></i><span id="vivo-texto">Conectando…</span></span>
+  <button class="boton" id="btn-voz" aria-pressed="false" title="El agente lee en voz alta lo que pasa">Voz</button>
+  <button class="boton lleno" id="btn-lanzar" title="Necesita token con permiso de escritura en Actions">Lanzar pipeline</button>
+</header>
+
+<details class="ajustes" id="ajustes">
+  <summary>Ajustes de conexión</summary>
+  <div class="campos">
+    <label>Repositorio
+      <input id="in-repo" value="Angel050019/UTrueque-DevOps" spellcheck="false">
+    </label>
+    <label>Archivo del workflow
+      <input id="in-workflow" value="ci.yml" spellcheck="false">
+    </label>
+    <label>Token de GitHub (opcional)
+      <input id="in-token" type="password" placeholder="ghp_… o github_pat_…" autocomplete="off">
+    </label>
+    <button class="boton" id="btn-guardar">Conectar</button>
+    <p>Sin token, GitHub permite 60 consultas por hora; con token, 5000. El token se guarda solo en esta pestaña y se borra al cerrarla. Nunca lo subas al repositorio.</p>
+  </div>
+</details>
+
+<main>
+  <section class="corrida" aria-live="off">
+    <div>
+      <h2 id="titulo">Buscando corridas del pipeline…</h2>
+      <div class="meta" id="meta"></div>
+    </div>
+    <div class="reloj">
+      <div class="grande" id="reloj">0:00</div>
+      <div class="chico" id="eta">&nbsp;</div>
+    </div>
+    <div class="avance" id="avance" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Avance del pipeline"><div></div></div>
+  </section>
+
+  <section class="riel-caja" aria-label="Pasos del pipeline">
+    <h3>Pasos del pipeline</h3>
+    <div class="job-tabs" id="job-tabs"></div>
+    <ol class="riel" id="riel"><li class="vacio">Todavía no hay pasos que mostrar.</li></ol>
+  </section>
+
+  <section class="agente" aria-label="Agente">
+    <div class="agente-cabeza">
+      <div class="avatar" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#96FCCA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 7V4M9 12h.01M15 12h.01M9.5 15.5c1.5 1 3.5 1 5 0"/></svg>
+      </div>
+      <div>
+        <h3>Lo que observa el agente</h3>
+        <p id="agente-estado">Revisa GitHub Actions cada pocos segundos.</p>
+      </div>
+    </div>
+    <div class="diagnostico" id="diagnostico" data-tono="info">
+      <strong>Preparando</strong>
+      <p>Estoy buscando la corrida más reciente del pipeline.</p>
+    </div>
+    <ol class="bitacora" id="bitacora" aria-live="polite"></ol>
+  </section>
+
+  <div class="controles">
+    <button class="boton" id="btn-seguir" aria-pressed="true">Seguir la corrida más reciente</button>
+    <button class="boton" id="btn-repetir">Repetir esta corrida</button>
+    <label>Velocidad
+      <select id="sel-velocidad">
+        <option value="1">1×</option>
+        <option value="2">2×</option>
+        <option value="4" selected>4×</option>
+        <option value="8">8×</option>
+      </select>
+    </label>
+    <span id="limite"></span>
+  </div>
+
+  <section class="recientes" aria-label="Corridas recientes">
+    <h3>Corridas recientes</h3>
+    <ul id="recientes"></ul>
+  </section>
+</main>
+
+<script>
+'use strict';
+/* =====================================================================
+   Agente del Pipeline CI — UTrueque
+   Ciclo del agente:  PERCIBIR (API de GitHub)  →  RAZONAR (comparar con
+   lo anterior, con el historial y con su base de conocimiento)  →  ACTUAR
+   (dibujar, narrar, avisar, diagnosticar y, con permiso, lanzar el CI).
+   ===================================================================== */
+
+/* ---------- Base de conocimiento: qué hace cada paso y qué hacer si falla ---------- */
+const CONOCIMIENTO = [
+  { patron: /set up job/i, nombre: 'Preparar la máquina',
+    hace: 'GitHub prepara una máquina Ubuntu limpia para correr el pipeline.',
+    falla: 'Es un problema de GitHub, no del código. Vuelve a ejecutar el job.' },
+  { patron: /checkout/i, nombre: 'Descargar el código',
+    hace: 'Descarga el código del commit con todo su historial (SonarQube lo usa para saber qué es código nuevo).',
+    falla: 'Suele ser un problema de red o de permisos. Vuelve a ejecutar el job.' },
+  { patron: /structure|estructura/i, nombre: 'Revisar la estructura del repo',
+    hace: 'Confirma que existan las carpetas docs/ y app/ y el archivo app/pubspec.yaml.',
+    falla: 'Alguien movió o borró una carpeta base. Revisa los últimos cambios de carpetas.' },
+  { patron: /setup flutter/i, nombre: 'Instalar Flutter',
+    hace: 'Instala Flutter estable; usa caché para que sea rápido.',
+    falla: 'Falló la descarga de Flutter. Vuelve a ejecutar el job.' },
+  { patron: /dependencias|pub get/i, nombre: 'Instalar dependencias',
+    hace: 'Corre flutter pub get para bajar los paquetes de pubspec.yaml.',
+    falla: 'Hay un conflicto de versiones en pubspec.yaml. Corre flutter pub get en tu máquina para ver el error.' },
+  { patron: /analyze|análisis estático/i, nombre: 'Análisis estático',
+    hace: 'El analizador de Dart revisa el código. Un solo error o advertencia detiene el pipeline.',
+    falla: 'El analizador encontró problemas. Las anotaciones dicen el archivo y la línea. Corre flutter analyze y corrígelos.' },
+  { patron: /pruebas|test/i, nombre: 'Pruebas y cobertura',
+    hace: 'Corre las pruebas unitarias y las del API REST (patrón AAA) y genera el reporte de cobertura.',
+    falla: 'Al menos una prueba falló. Corre flutter test para ver cuál. Cambia la prueba solo si el comportamiento nuevo es el correcto.' },
+  { patron: /quality gate local|cobertura >=/i, nombre: 'Quality Gate local de cobertura',
+    hace: 'Calcula la cobertura de las capas de dominio y datos. Si baja de 80 %, el pipeline se detiene.',
+    falla: 'La cobertura de dominio y datos bajó del 80 %. Agrega pruebas para el código nuevo en domain/ o data/.' },
+  { patron: /publicar reporte/i, nombre: 'Guardar reporte de cobertura',
+    hace: 'Guarda lcov.info como archivo descargable de la corrida.',
+    falla: 'No se pudo guardar el reporte. No afecta la calidad del código; vuelve a ejecutar.' },
+  { patron: /corre sonarqube/i, nombre: 'Decidir si corre SonarQube',
+    hace: 'Revisa si hay token y si el evento va hacia develop (el plan Free de SonarQube solo analiza esa rama).',
+    falla: 'Error en el script de decisión. Revisa el workflow.' },
+  { patron: /sonarqube cloud|sonar/i, nombre: 'SonarQube Cloud + Quality Gate', sonar: true,
+    hace: 'Envía el código y la cobertura a SonarQube Cloud y espera el veredicto del Quality Gate "Sonar way".',
+    omitido: 'Se omitió: falta el secreto SONAR_TOKEN o el evento no va hacia develop.',
+    falla: 'El Quality Gate falló o hubo un error de configuración. Abre SonarQube Cloud para ver qué condición no se cumplió: cobertura del código nuevo, duplicación, bugs o hotspots.' },
+  { patron: /^post |complete job/i, nombre: 'Limpieza final', callado: true,
+    hace: 'GitHub guarda la caché y apaga la máquina.',
+    falla: 'Falla de limpieza de GitHub; no afecta el resultado de calidad.' },
+];
+const conocer = (nombrePaso) =>
+  CONOCIMIENTO.find((k) => k.patron.test(nombrePaso)) ||
+  { nombre: nombrePaso, hace: 'Paso del workflow.', falla: 'Revisa el log de este paso en GitHub Actions.' };
+
+const SONAR_PROYECTO = 'Angel050019_UTrueque-DevOps';
+
+/* ---------- Estado ---------- */
+const S = {
+  repo: 'Angel050019/UTrueque-DevOps',
+  workflow: 'ci.yml',
+  token: '',
+  runs: [],
+  runId: null,          // corrida seleccionada
+  seguir: true,         // seguir la más reciente
+  jobs: [],             // jobs de la corrida seleccionada (snapshot actual)
+  jobId: null,          // job mostrado en el riel
+  antes: new Map(),     // memoria: estado anterior de cada paso
+  runAntes: null,       // estado anterior de la corrida
+  avisados: new Set(),  // pasos lentos ya avisados
+  historial: new Map(), // nombre de paso -> [duraciones en s]
+  historialTotal: [],   // duraciones totales de corridas exitosas
+  historialListo: false,
+  repeticion: null,     // {run, jobs, t0, t1, inicio, velocidad}
+  voz: false,
+  limite: null,
+  esperaHasta: 0,
+  timer: null,
+};
+
+/* ---------- Utilidades ---------- */
+const $ = (id) => document.getElementById(id);
+const seg = (a, b) => Math.max(0, (new Date(b) - new Date(a)) / 1000);
+const mmss = (s) => { s = Math.max(0, Math.round(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+const humano = (s) => { s = Math.round(s); return s < 1 ? 'menos de 1 s' : s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${s % 60} s`; };
+const promedio = (xs) => xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null;
+const hora = (d = new Date()) => d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {} };
+const leer = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch (_) { return null; } };
+const leerSesion = (k) => { try { return sessionStorage.getItem(k) || ''; } catch (_) { return ''; } };
+const guardarSesion = (k, v) => { try { v ? sessionStorage.setItem(k, v) : sessionStorage.removeItem(k); } catch (_) {} };
+const EVENTOS = { push: 'push', pull_request: 'pull request', workflow_dispatch: 'lanzado a mano', schedule: 'programado' };
+
+/* =====================================================================
+   PERCIBIR — API REST de GitHub
+   ===================================================================== */
+async function api(ruta, opciones = {}) {
+  const headers = { Accept: 'application/vnd.github+json' };
+  if (S.token) headers.Authorization = `Bearer ${S.token}`;
+  if (opciones.body) headers['Content-Type'] = 'application/json';
+  // cache: 'no-cache' revalida con ETag; las respuestas 304 no gastan el límite de GitHub.
+  const r = await fetch(`https://api.github.com${ruta}`, { cache: 'no-cache', headers, ...opciones });
+  const resta = r.headers.get('x-ratelimit-remaining');
+  const total = r.headers.get('x-ratelimit-limit');
+  const reinicio = r.headers.get('x-ratelimit-reset');
+  if (resta !== null) S.limite = { resta: +resta, total: +total, reinicio: +reinicio };
+  pintarLimite();
+  if (!r.ok) {
+    const err = new Error(`HTTP ${r.status}`);
+    err.status = r.status;
+    try { err.detalle = (await r.json()).message; } catch (_) {}
+    throw err;
+  }
+  return r.status === 204 ? null : r.json();
+}
+
+async function percibirCorridas() {
+  try {
+    const d = await api(`/repos/${S.repo}/actions/workflows/${encodeURIComponent(S.workflow)}/runs?per_page=12`);
+    return d.workflow_runs || [];
+  } catch (e) {
+    if (e.status === 404) {
+      const d = await api(`/repos/${S.repo}/actions/runs?per_page=12`);
+      return d.workflow_runs || [];
+    }
+    throw e;
+  }
+}
+const percibirJobs = async (runId) => (await api(`/repos/${S.repo}/actions/runs/${runId}/jobs?filter=latest&per_page=30`)).jobs || [];
+const percibirAnotaciones = (jobId) => api(`/repos/${S.repo}/check-runs/${jobId}/annotations?per_page=50`);
+
+/* Aprende cuánto tarda normalmente cada paso, con las últimas corridas exitosas. */
+async function aprenderHistorial() {
+  const exitosas = S.runs.filter((r) => r.conclusion === 'success').slice(0, S.token ? 8 : 4);
+  for (const run of exitosas) {
+    let jobs = leer(`agente-jobs-${run.id}`);
+    if (!jobs) {
+      try { jobs = await percibirJobs(run.id); } catch (_) { continue; }
+      guardar(`agente-jobs-${run.id}`, jobs.map((j) => ({
+        name: j.name, started_at: j.started_at, completed_at: j.completed_at,
+        steps: (j.steps || []).map((s) => ({ name: s.name, conclusion: s.conclusion, started_at: s.started_at, completed_at: s.completed_at })),
+      })));
+      jobs = leer(`agente-jobs-${run.id}`) || jobs;
+    }
+    for (const j of jobs) {
+      if (j.started_at && j.completed_at) S.historialTotal.push(seg(j.started_at, j.completed_at));
+      for (const s of j.steps || []) {
+        if (s.conclusion !== 'success' || !s.started_at || !s.completed_at) continue;
+        const lista = S.historial.get(s.name) || [];
+        lista.push(seg(s.started_at, s.completed_at));
+        S.historial.set(s.name, lista);
+      }
+    }
+  }
+  S.historialListo = true;
+  if (exitosas.length) {
+    decir(`Aprendí cuánto tarda cada paso con ${exitosas.length} corrida${exitosas.length > 1 ? 's' : ''} anterior${exitosas.length > 1 ? 'es' : ''} exitosa${exitosas.length > 1 ? 's' : ''}. En promedio el pipeline completo tarda ${humano(promedio(S.historialTotal) || 0)}.`, 'info', false);
+  }
+}
+const esperado = (nombrePaso) => promedio(S.historial.get(nombrePaso) || []);
+
+/* =====================================================================
+   RAZONAR — comparar el estado nuevo con el anterior y decidir qué decir
+   ===================================================================== */
+function estadoPaso(s) {
+  if (s.status === 'completed') {
+    if (s.conclusion === 'success') return 'exito';
+    if (s.conclusion === 'skipped') return 'omitido';
+    if (s.conclusion === 'cancelled') return 'cancelado';
+    return 'falla';
+  }
+  if (s.status === 'in_progress') return 'en-curso';
+  return 'pendiente';
+}
+
+function razonar(run, jobs, ahora, primeraVez) {
+  const runAntes = S.runAntes;
+  const etiqueta = `#${run.run_number}`;
+
+  if (primeraVez) {
+    S.antes.clear(); S.avisados.clear();
+    const quien = run.actor ? run.actor.login : 'alguien';
+    if (run.status !== 'completed') {
+      decir(`Detecté la corrida ${etiqueta}: ${EVENTOS[run.event] || run.event} de ${quien} en ${run.head_branch}. Voy a seguirla paso por paso.`, 'info');
+    } else if (!S.repeticion) {
+      decir(`La corrida ${etiqueta} ya terminó: ${resultadoTexto(run.conclusion)}. Puedes repetirla con "Repetir esta corrida".`, run.conclusion === 'success' ? 'exito' : 'aviso', false);
+    }
+  }
+
+  if (run.status === 'queued' && (!runAntes || runAntes.status !== 'queued') && !primeraVez) {
+    decir(`La corrida ${etiqueta} está en cola, esperando una máquina de GitHub.`, 'info');
+  }
+
+  for (const job of jobs) {
+    let fallaPrevia = false;
+    for (const s of job.steps || []) {
+      const clave = `${job.id}:${s.number}`;
+      const trasFalla = fallaPrevia;
+      if (estadoPaso(s) === 'falla') fallaPrevia = true;
+      const nuevo = estadoPaso(s);
+      const viejo = S.antes.get(clave);
+      S.antes.set(clave, nuevo);
+      if (primeraVez && !S.repeticion) continue; // no narrar el pasado
+      if (viejo === nuevo) {
+        // ¿Se está tardando de más?
+        if (nuevo === 'en-curso' && !S.avisados.has(clave)) {
+          const prom = esperado(s.name);
+          const va = seg(s.started_at, ahora);
+          if (prom && va > prom * 2 + 10) {
+            S.avisados.add(clave);
+            decir(`"${conocer(s.name).nombre}" lleva ${humano(va)}; normalmente tarda ${humano(prom)}. Puede ser la red de GitHub o una prueba lenta.`, 'aviso');
+          }
+        }
+        continue;
+      }
+      const k = conocer(s.name);
+      if (nuevo === 'en-curso') {
+        if (k.callado) continue;
+        const prom = esperado(s.name);
+        decir(`Empezó "${k.nombre}". ${k.hace}${prom ? ` Suele tardar ${humano(prom)}.` : ''}`, 'info', k.sonar || /pruebas|analyze/i.test(s.name));
+      } else if (nuevo === 'exito') {
+        const dur = s.started_at && s.completed_at ? seg(s.started_at, s.completed_at) : 0;
+        if (k.sonar) decir('SonarQube Cloud respondió: Quality Gate PASSED.', 'exito', true);
+        else if (dur >= 3 || /pruebas|analyze|quality/i.test(s.name)) {
+          const prom = esperado(s.name);
+          let comp = '';
+          if (prom && dur > prom * 1.5 + 3) comp = ` Fue más lento que lo normal (${humano(prom)}).`;
+          else if (prom && dur < prom * 0.7 - 2) comp = ' Más rápido que lo normal.';
+          decir(`Listo "${k.nombre}" en ${humano(dur)}.${comp}`, 'exito', /quality gate local/i.test(s.name));
+        }
+      } else if (nuevo === 'omitido' && trasFalla) {
+        if (!S.avisados.has(`omitidos:${job.id}`)) {
+          S.avisados.add(`omitidos:${job.id}`);
+          decir('Como falló un paso, GitHub omite los siguientes; solo corren los de limpieza y el reporte de cobertura.', 'aviso');
+        }
+      } else if (nuevo === 'omitido') {
+        decir(`Se omitió "${k.nombre}". ${k.omitido || 'Su condición no se cumplió en este evento.'}`, 'aviso');
+      } else if (nuevo === 'falla') {
+        decir(`Falló "${k.nombre}". ${k.falla}`, 'error', true);
+      }
+    }
+  }
+
+  // ¿Terminó la corrida?
+  if (run.status === 'completed' && (!runAntes || runAntes.status !== 'completed') && !(primeraVez && !S.repeticion)) {
+    const dur = seg(run.run_started_at || run.created_at, run.updated_at);
+    const prom = promedio(S.historialTotal);
+    const comp = prom ? ` El promedio es ${humano(prom)}.` : '';
+    decir(`La corrida ${etiqueta} terminó: ${resultadoTexto(run.conclusion)} en ${humano(dur)}.${comp}`, run.conclusion === 'success' ? 'exito' : 'error', true);
+    if (!S.repeticion) explicarAnotaciones(jobs);
+  }
+  S.runAntes = { status: run.status, conclusion: run.conclusion };
+}
+
+function resultadoTexto(c) {
+  return ({ success: 'todo salió bien', failure: 'algo falló', cancelled: 'se canceló', skipped: 'se omitió', timed_out: 'se acabó el tiempo' })[c] || (c || 'sin resultado');
+}
+
+/* Lee las anotaciones del job (avisos ::warning / ::error del workflow) y las explica. */
+async function explicarAnotaciones(jobs) {
+  for (const job of jobs) {
+    let notas = [];
+    try { notas = await percibirAnotaciones(job.id) || []; } catch (_) { continue; }
+    const errores = notas.filter((n) => n.annotation_level === 'failure' && n.path && n.path !== '.github');
+    if (errores.length) {
+      const lista = errores.slice(0, 3).map((n) => `${n.path}:${n.start_line} (${n.message.slice(0, 90)})`).join('; ');
+      decir(`Encontré ${errores.length} problema${errores.length > 1 ? 's' : ''} en el código: ${lista}.`, 'error');
+    }
+    for (const n of notas) {
+      if (/SONAR_TOKEN/.test(n.message)) decir('Aviso del CI: falta el secreto SONAR_TOKEN, por eso no se consultó SonarQube. Lo configura el dueño del repo.', 'aviso');
+      else if (/solo analiza/.test(n.message)) decir('Aviso del CI: SonarQube se saltó porque esta corrida no va hacia develop (límite del plan Free).', 'aviso');
+    }
+  }
+}
+
+/* El diagnóstico es la conclusión del agente sobre la corrida actual. */
+function diagnosticar(run, jobs, ahora) {
+  const pasos = jobs.flatMap((j) => j.steps || []);
+  const falla = pasos.find((s) => estadoPaso(s) === 'falla');
+  const curso = pasos.find((s) => estadoPaso(s) === 'en-curso');
+  const sonar = pasos.find((s) => conocer(s.name).sonar && !/corre sonarqube/i.test(s.name));
+  const urlSonar = sonarUrl(run);
+
+  if (falla) {
+    const k = conocer(falla.name);
+    return { tono: 'error', titulo: `Falló: ${k.nombre}`,
+      html: `<p>${esc(k.falla)}</p><ul><li><a href="${esc(run.html_url)}" target="_blank" rel="noopener">Abrir el log en GitHub</a></li>${k.sonar ? `<li><a href="${urlSonar}" target="_blank" rel="noopener">Ver el Quality Gate en SonarQube Cloud</a></li>` : ''}</ul>` };
+  }
+  if (run.status !== 'completed') {
+    if (!curso) return { tono: 'info', titulo: 'En cola', html: '<p>La corrida espera una máquina de GitHub.</p>' };
+    const k = conocer(curso.name);
+    const prom = esperado(curso.name);
+    const va = seg(curso.started_at, ahora);
+    const lento = prom && va > prom * 2 + 10;
+    return { tono: lento ? 'aviso' : 'info', titulo: `Ahora: ${k.nombre}`,
+      html: `<p>${esc(k.hace)}</p>${lento ? `<p><b>Va más lento que lo normal</b> (${humano(va)} contra ${humano(prom)}).</p>` : ''}` };
+  }
+  if (run.conclusion === 'success') {
+    const qg = sonar && sonar.conclusion === 'success'
+      ? `<p>SonarQube Cloud: <b>Quality Gate PASSED</b>. <a href="${urlSonar}" target="_blank" rel="noopener">Ver detalle</a></p>`
+      : sonar && sonar.conclusion === 'skipped' ? '<p>SonarQube se omitió en esta corrida.</p>' : '';
+    return { tono: 'exito', titulo: 'Pipeline en verde', html: `<p>Análisis, pruebas y cobertura pasaron. El cambio se puede integrar.</p>${qg}` };
+  }
+  if (run.conclusion === 'cancelled') {
+    return { tono: 'aviso', titulo: 'Corrida cancelada', html: '<p>Normalmente pasa cuando llega un commit más nuevo al mismo PR: el CI cancela la corrida vieja y empieza otra.</p>' };
+  }
+  return { tono: 'error', titulo: 'La corrida no pasó', html: `<p><a href="${esc(run.html_url)}" target="_blank" rel="noopener">Abre la corrida en GitHub</a> para ver el detalle.</p>` };
+}
+
+function sonarUrl(run) {
+  const pr = run.pull_requests && run.pull_requests[0];
+  return pr ? `https://sonarcloud.io/summary/new_code?id=${SONAR_PROYECTO}&pullRequest=${pr.number}`
+            : `https://sonarcloud.io/summary/overall?id=${SONAR_PROYECTO}&branch=${encodeURIComponent(run.head_branch || 'develop')}`;
+}
+
+/* =====================================================================
+   ACTUAR — dibujar, narrar, hablar
+   ===================================================================== */
+function decir(texto, tono = 'info', hablar = false) {
+  const li = document.createElement('li');
+  li.dataset.tono = tono;
+  li.className = 'nuevo';
+  li.innerHTML = `<time>${hora()}</time><span>${esc(texto)}</span>`;
+  const b = $('bitacora');
+  b.prepend(li);
+  while (b.children.length > 60) b.lastChild.remove();
+  if (S.voz && hablar && 'speechSynthesis' in window) {
+    const u = new SpeechSynthesisUtterance(texto);
+    u.lang = 'es-MX'; u.rate = 1.05;
+    if (speechSynthesis.pending) speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  }
+}
+
+const ICONOS = {
+  exito: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  falla: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M7 7l10 10M17 7L7 17"/></svg>',
+  omitido: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 12h12M13 7l5 5-5 5"/></svg>',
+  cancelado: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M7 12h10"/></svg>',
+};
+
+function pintar(run, jobs, ahora) {
+  // Encabezado de la corrida
+  const titulo = (run.display_title || run.head_commit?.message || '').split('\n')[0];
+  $('titulo').textContent = titulo || `Corrida #${run.run_number}`;
+  const pr = run.pull_requests && run.pull_requests[0];
+  $('meta').innerHTML = [
+    `<span><a href="${esc(run.html_url)}" target="_blank" rel="noopener">Corrida #${run.run_number}</a></span>`,
+    `<span>${esc(EVENTOS[run.event] || run.event)}${pr ? ` #${pr.number}` : ''}</span>`,
+    `<span class="etiqueta-rama">${esc(run.head_branch)}</span>`,
+    run.actor ? `<span>${esc(run.actor.login)}</span>` : '',
+    `<span>commit ${esc((run.head_sha || '').slice(0, 7))}</span>`,
+    S.repeticion ? '<span><b>Repetición con los tiempos reales</b></span>' : '',
+  ].join('');
+
+  // Pestañas de jobs (si hay más de uno)
+  if (!jobs.some((j) => j.id === S.jobId)) S.jobId = jobs[0]?.id ?? null;
+  $('job-tabs').innerHTML = jobs.length > 1
+    ? jobs.map((j) => `<button data-job="${j.id}" aria-pressed="${j.id === S.jobId}">${esc(j.name)}</button>`).join('') : '';
+  const job = jobs.find((j) => j.id === S.jobId);
+
+  // Reloj, avance y ETA
+  const inicio = job?.started_at || run.run_started_at;
+  const fin = run.status === 'completed' ? (job?.completed_at || run.updated_at) : ahora;
+  $('reloj').textContent = inicio && job?.status !== 'queued' ? mmss(seg(inicio, fin)) : '0:00';
+  const pasos = job?.steps || [];
+  let hecho = 0, total = 0;
+  for (const s of pasos) {
+    const e = estadoPaso(s);
+    const real = s.started_at && s.completed_at ? seg(s.started_at, s.completed_at) : null;
+    const peso = Math.max(esperado(s.name) ?? real ?? 2, 1);
+    total += peso;
+    if (e === 'exito' || e === 'omitido' || e === 'falla' || e === 'cancelado') hecho += peso;
+    else if (e === 'en-curso') hecho += Math.min(seg(s.started_at, ahora), peso * 0.95);
+  }
+  const pct = run.status === 'completed' ? 100 : total ? Math.min(99, Math.round((hecho / total) * 100)) : 0;
+  const barra = $('avance');
+  barra.firstElementChild.style.width = `${pct}%`;
+  barra.setAttribute('aria-valuenow', pct);
+  barra.dataset.res = run.status === 'completed' ? (run.conclusion === 'success' ? 'success' : 'failure') : '';
+  if (run.status === 'completed') $('eta').textContent = `Terminó: ${resultadoTexto(run.conclusion)}`;
+  else if (S.historialListo && total && hecho < total) $('eta').textContent = `${pct} % · faltan ~${humano(Math.max(total - hecho, 1))}`;
+  else $('eta').textContent = `${pct} %`;
+
+  // Riel de pasos
+  let hayFalla = false;
+  $('riel').innerHTML = pasos.length ? pasos.map((s) => {
+    const e = estadoPaso(s);
+    const trasFalla = hayFalla && e === 'omitido';
+    if (e === 'falla') hayFalla = true;
+    const k = conocer(s.name);
+    const prom = esperado(s.name);
+    let tiempo = '', sub = '', lento = 0;
+    if (e === 'en-curso') {
+      const va = seg(s.started_at, ahora);
+      tiempo = humano(va);
+      sub = prom ? `normal ~${humano(prom)}` : 'en curso';
+      lento = prom && va > prom * 2 + 10 ? 1 : 0;
+    } else if (s.started_at && s.completed_at && e !== 'pendiente') {
+      tiempo = e === 'omitido' ? 'omitido' : humano(seg(s.started_at, s.completed_at));
+    } else if (prom) {
+      sub = `~${humano(prom)}`;
+    }
+    const llenado = e === 'en-curso' && prom ? Math.min(100, (seg(s.started_at, ahora) / prom) * 100) : 40;
+    const detalle = e === 'falla' ? k.falla
+      : trasFalla ? 'Se omitió porque falló un paso anterior.'
+      : e === 'omitido' ? (k.omitido || 'Su condición no se cumplió en este evento.') : k.hace;
+    return `<li data-estado="${e}" data-tras-falla="${trasFalla ? 1 : 0}" data-lento="${lento}" style="--llenado:${llenado}%">
+      <span class="estacion" aria-hidden="true">${ICONOS[e] || s.number}</span>
+      <span><span class="paso-nombre">${esc(s.name)}</span><span class="paso-detalle paso-desc">${esc(detalle)}</span></span>
+      <span class="paso-tiempo">${tiempo}<small>${sub}</small></span>
+    </li>`;
+  }).join('') : `<li class="vacio">${job ? 'El job está en cola; los pasos aparecen cuando GitHub asigna la máquina.' : 'Esta corrida no tiene jobs todavía.'}</li>`;
+
+  // Diagnóstico
+  const d = diagnosticar(run, jobs, ahora);
+  const caja = $('diagnostico');
+  caja.dataset.tono = d.tono;
+  caja.innerHTML = `<strong>${esc(d.titulo)}</strong>${d.html}`;
+}
+
+function pintarRecientes() {
+  $('recientes').innerHTML = S.runs.map((r) => {
+    const estado = r.status === 'completed' ? r.conclusion : r.status;
+    return `<li><button data-run="${r.id}" aria-pressed="${r.id === S.runId}">
+      <b><span class="punto ${esc(estado)}"></span>#${r.run_number}</b>
+      <small>${esc(r.head_branch)} · ${esc(EVENTOS[r.event] || r.event)}</small>
+      <small>${new Date(r.created_at).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</small>
+    </button></li>`;
+  }).join('') || '<li class="vacio">Sin corridas.</li>';
+}
+
+function pintarLimite() {
+  if (!S.limite) return;
+  $('limite').textContent = `Consultas a GitHub disponibles: ${S.limite.resta} de ${S.limite.total}`;
+}
+
+function marcarVivo(estado, texto) {
+  $('vivo').dataset.estado = estado;
+  $('vivo-texto').textContent = texto;
+}
+
+/* =====================================================================
+   Ciclo principal del agente
+   ===================================================================== */
+async function ciclo() {
+  clearTimeout(S.timer);
+  if (S.repeticion) return; // en repetición manda el reloj de la repetición
+  let siguiente = 20000;
+  try {
+    if (Date.now() < S.esperaHasta) { siguiente = S.esperaHasta - Date.now() + 1000; throw null; }
+    const runs = await percibirCorridas();
+    const nuevaMasReciente = runs[0] && S.runs[0] && runs[0].id !== S.runs[0].id;
+    S.runs = runs;
+    if (!S.historialListo && runs.length) await aprenderHistorial();
+    if (nuevaMasReciente && !S.seguir) decir(`Hay una corrida nueva (#${runs[0].run_number}). Activa "Seguir la corrida más reciente" para verla.`, 'info');
+    let primeraVez = false;
+    if ((S.seguir && runs[0] && runs[0].id !== S.runId) || (!S.runId && runs[0])) {
+      S.runId = runs[0].id; primeraVez = true; S.runAntes = null;
+    }
+    pintarRecientes();
+    const run = runs.find((r) => r.id === S.runId);
+    if (run) {
+      S.jobs = await percibirJobs(run.id);
+      const ahora = new Date();
+      razonar(run, S.jobs, ahora, primeraVez);
+      pintar(run, S.jobs, ahora);
+      siguiente = run.status === 'completed' ? 15000 : 3000;
+    } else {
+      $('titulo').textContent = 'Este workflow aún no tiene corridas';
+    }
+    marcarVivo('vivo', run && run.status !== 'completed' ? 'En vivo · siguiendo la corrida' : 'En vivo · esperando');
+    $('agente-estado').textContent = `Revisa GitHub cada ${siguiente / 1000} s${run && run.status !== 'completed' ? ' (más seguido porque hay una corrida en curso)' : ''}.`;
+  } catch (e) {
+    if (e) {
+      if (e.status === 403 || e.status === 429) {
+        const reinicio = S.limite?.reinicio ? S.limite.reinicio * 1000 : Date.now() + 60000;
+        S.esperaHasta = reinicio;
+        siguiente = Math.max(reinicio - Date.now(), 5000) + 1000;
+        decir(`GitHub me pidió esperar: se acabaron las consultas sin token. Vuelvo a revisar a las ${hora(new Date(reinicio))}. Con un token en "Ajustes de conexión" esto no pasa.`, 'aviso');
+        marcarVivo('error', 'En pausa por límite de GitHub');
+      } else if (e.status === 404) {
+        decir(`No encontré el repositorio ${S.repo}. Revisa el nombre en "Ajustes de conexión".`, 'error');
+        marcarVivo('error', 'Repositorio no encontrado');
+        siguiente = 60000;
+      } else if (e.status === 401) {
+        decir('El token no es válido o ya expiró. Bórralo o genera uno nuevo.', 'error');
+        marcarVivo('error', 'Token inválido');
+        siguiente = 60000;
+      } else {
+        decir(`No pude conectarme con GitHub (${e.message || 'sin red'}). Reintento en 15 s.`, 'aviso');
+        marcarVivo('error', 'Sin conexión');
+        siguiente = 15000;
+      }
+    }
+  }
+  S.timer = setTimeout(ciclo, siguiente);
+}
+
+/* Reloj de 1 s para que el tiempo del paso en curso avance sin consultar a GitHub. */
+setInterval(() => {
+  if (S.repeticion) return tickRepeticion();
+  const run = S.runs.find((r) => r.id === S.runId);
+  if (run && run.status !== 'completed' && S.jobs.length) pintar(run, S.jobs, new Date());
+}, 1000);
+
+/* =====================================================================
+   Repetición: reproduce una corrida terminada con sus tiempos reales
+   ===================================================================== */
+function fotoEn(t, job) {
+  const est = (ini, fin, conclusion) => {
+    if (!ini || t < new Date(ini)) return { status: 'queued', conclusion: null };
+    if (!fin || t < new Date(fin)) return { status: 'in_progress', conclusion: null };
+    return { status: 'completed', conclusion };
+  };
+  return {
+    ...job,
+    ...est(job.started_at, job.completed_at, job.conclusion),
+    steps: (job.steps || []).map((s) => ({ ...s, ...est(s.started_at, s.completed_at, s.conclusion) })),
+  };
+}
+
+async function iniciarRepeticion() {
+  const run = S.runs.find((r) => r.id === S.runId);
+  if (!run) return;
+  if (run.status !== 'completed') { decir('Esta corrida sigue en curso; la estoy mostrando en vivo.', 'info'); return; }
+  const jobs = S.jobs.length ? S.jobs : await percibirJobs(run.id);
+  const inicios = jobs.map((j) => new Date(j.started_at)).filter((d) => !isNaN(d));
+  const fines = jobs.map((j) => new Date(j.completed_at)).filter((d) => !isNaN(d));
+  if (!inicios.length) { decir('Esta corrida no tiene tiempos para repetir.', 'aviso'); return; }
+  clearTimeout(S.timer);
+  const t0 = new Date(Math.min(...inicios) - 1500);
+  const t1 = new Date(Math.max(...fines));
+  S.repeticion = { run, jobs, t0, t1, inicio: Date.now(), velocidad: +$('sel-velocidad').value };
+  S.runAntes = { status: 'queued' };
+  S.antes.clear(); S.avisados.clear();
+  for (const j of jobs) for (const s of j.steps || []) S.antes.set(`${j.id}:${s.number}`, 'pendiente');
+  $('bitacora').innerHTML = '';
+  decir(`Repetición de la corrida #${run.run_number} con sus tiempos reales, a ${S.repeticion.velocidad}×.`, 'info', true);
+  $('btn-repetir').textContent = 'Detener repetición';
+  marcarVivo('repeticion', `Repetición · ${S.repeticion.velocidad}×`);
+  tickRepeticion();
+}
+
+function tickRepeticion() {
+  const R = S.repeticion;
+  const t = new Date(R.t0.getTime() + (Date.now() - R.inicio) * R.velocidad);
+  const jobs = R.jobs.map((j) => fotoEn(t, j));
+  const terminada = t >= R.t1;
+  const run = {
+    ...R.run,
+    status: terminada ? 'completed' : 'in_progress',
+    conclusion: terminada ? R.run.conclusion : null,
+    run_started_at: R.t0.toISOString(),
+    updated_at: (terminada ? R.t1 : t).toISOString(),
+  };
+  razonar(run, jobs, t, false);
+  pintar(run, jobs, t);
+  if (terminada) detenerRepeticion(false);
+}
+
+function detenerRepeticion(reanudar = true) {
+  if (!S.repeticion) return;
+  S.repeticion = null;
+  $('btn-repetir').textContent = 'Repetir esta corrida';
+  marcarVivo('vivo', 'En vivo');
+  if (reanudar) { S.runAntes = null; ciclo(); }
+  else S.timer = setTimeout(() => { S.runAntes = { status: 'completed' }; ciclo(); }, 4000);
+}
+
+/* =====================================================================
+   Acción con permiso: lanzar el pipeline (workflow_dispatch)
+   ===================================================================== */
+async function lanzar() {
+  if (!S.token) {
+    $('ajustes').open = true;
+    $('in-token').focus();
+    decir('Para lanzar el pipeline necesito un token con permiso de escritura en el repositorio. Ponlo en "Ajustes de conexión".', 'aviso');
+    return;
+  }
+  const rama = prompt('¿En qué rama lanzo el pipeline?', 'develop');
+  if (!rama) return;
+  try {
+    await api(`/repos/${S.repo}/actions/workflows/${encodeURIComponent(S.workflow)}/dispatches`, {
+      method: 'POST', body: JSON.stringify({ ref: rama }),
+    });
+    decir(`Lancé el pipeline en ${rama}. En unos segundos debe aparecer la corrida nueva.`, 'exito', true);
+    S.seguir = true; $('btn-seguir').setAttribute('aria-pressed', 'true');
+    setTimeout(ciclo, 2500);
+  } catch (e) {
+    const msg = e.status === 422
+      ? 'GitHub no dejó lanzarlo: el workflow necesita el disparador workflow_dispatch en esa rama, o la rama no existe.'
+      : e.status === 403 || e.status === 404
+        ? 'El token no tiene permiso para lanzar workflows en este repo (se necesita permiso de escritura en Actions).'
+        : `No se pudo lanzar (${e.message}).`;
+    decir(msg, 'error');
+  }
+}
+
+/* =====================================================================
+   Interfaz
+   ===================================================================== */
+function aplicarAjustes() {
+  const repo = $('in-repo').value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\/$/, '');
+  S.repo = repo || S.repo;
+  S.workflow = $('in-workflow').value.trim() || 'ci.yml';
+  S.token = $('in-token').value.trim();
+  guardar('agente-repo', S.repo);
+  guardar('agente-workflow', S.workflow);
+  guardarSesion('agente-token', S.token);
+  $('repo-texto').textContent = `${S.repo} · GitHub Actions`;
+  S.runs = []; S.runId = null; S.runAntes = null; S.historial.clear(); S.historialTotal = []; S.historialListo = false;
+  detenerRepeticion(false); clearTimeout(S.timer);
+  ciclo();
+}
+
+$('btn-guardar').addEventListener('click', () => { aplicarAjustes(); decir(`Conectado a ${S.repo}${S.token ? ' con token' : ' sin token'}.`, 'info'); });
+$('btn-voz').addEventListener('click', (e) => {
+  S.voz = !S.voz;
+  e.currentTarget.setAttribute('aria-pressed', S.voz);
+  if (S.voz) decir('Voz activada: leeré en voz alta los momentos importantes.', 'info', true);
+  else if ('speechSynthesis' in window) speechSynthesis.cancel();
+});
+$('btn-lanzar').addEventListener('click', lanzar);
+$('btn-seguir').addEventListener('click', (e) => {
+  S.seguir = !S.seguir;
+  e.currentTarget.setAttribute('aria-pressed', S.seguir);
+  if (S.seguir) { detenerRepeticion(false); clearTimeout(S.timer); ciclo(); }
+});
+$('btn-repetir').addEventListener('click', () => (S.repeticion ? detenerRepeticion(true) : iniciarRepeticion()));
+$('recientes').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-run]');
+  if (!b) return;
+  detenerRepeticion(false); clearTimeout(S.timer);
+  S.runId = +b.dataset.run; S.seguir = false; S.runAntes = null;
+  $('btn-seguir').setAttribute('aria-pressed', 'false');
+  const run = S.runs.find((r) => r.id === S.runId);
+  percibirJobs(S.runId).then((jobs) => {
+    S.jobs = jobs;
+    razonar(run, jobs, new Date(), true);
+    pintar(run, jobs, new Date());
+    pintarRecientes();
+    S.timer = setTimeout(ciclo, run.status === 'completed' ? 15000 : 3000);
+  }).catch(() => ciclo());
+});
+$('job-tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-job]');
+  if (!b) return;
+  S.jobId = +b.dataset.job;
+  const run = S.runs.find((r) => r.id === S.runId);
+  if (run) pintar(run, S.jobs, new Date());
+});
+
+/* Arranque: ajustes guardados o de la URL (?repo=dueño/repo&workflow=ci.yml) */
+(function arrancar() {
+  const q = new URLSearchParams(location.search);
+  $('in-repo').value = q.get('repo') || leer('agente-repo') || $('in-repo').value;
+  $('in-workflow').value = q.get('workflow') || leer('agente-workflow') || $('in-workflow').value;
+  $('in-token').value = leerSesion('agente-token');
+  if (q.get('velocidad')) $('sel-velocidad').value = q.get('velocidad');
+  aplicarAjustes();
+})();
+</script>
+</body>
+</html>

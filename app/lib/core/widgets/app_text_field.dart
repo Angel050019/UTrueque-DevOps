@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 
 /// Campo de texto estándar de UTrueque: etiqueta arriba y caja redondeada.
 /// Si [esContrasena] es true, incluye el botón para mostrar u ocultar.
+/// Con [lineas] mayor a 1 sirve para textos largos (descripción) y con
+/// [prefijo] muestra un texto fijo antes del valor (por ejemplo `$`).
+/// [filtros] limita qué caracteres se pueden escribir (ver `FiltrosTexto`).
 class AppTextField extends StatefulWidget {
   const AppTextField({
     super.key,
@@ -14,6 +18,10 @@ class AppTextField extends StatefulWidget {
     this.textoError,
     this.hint,
     this.habilitado = true,
+    this.lineas = 1,
+    this.prefijo,
+    this.onChanged,
+    this.filtros,
   });
 
   final TextEditingController controller;
@@ -23,6 +31,10 @@ class AppTextField extends StatefulWidget {
   final String? textoError;
   final String? hint;
   final bool habilitado;
+  final int lineas;
+  final String? prefijo;
+  final ValueChanged<String>? onChanged;
+  final List<TextInputFormatter>? filtros;
 
   @override
   State<AppTextField> createState() => _AppTextFieldState();
@@ -49,9 +61,15 @@ class _AppTextFieldState extends State<AppTextField> {
           enabled: widget.habilitado,
           obscureText: widget.esContrasena && _oculto,
           keyboardType: widget.tipoTeclado,
+          minLines: widget.esContrasena ? 1 : widget.lineas,
+          maxLines: widget.esContrasena ? 1 : widget.lineas,
+          onChanged: widget.onChanged,
+          inputFormatters: widget.filtros,
           style: AppTexto.cuerpo(color: AppColores.texto),
           decoration: InputDecoration(
             hintText: widget.hint,
+            prefixText: widget.prefijo,
+            prefixStyle: AppTexto.cuerpo(color: AppColores.texto, peso: FontWeight.w600),
             hintStyle: AppTexto.cuerpo(),
             errorText: widget.textoError,
             errorMaxLines: 2,
