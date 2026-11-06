@@ -503,3 +503,26 @@ Archivo: [`app/test/api/publicaciones_api_rest_test.dart`](../app/test/api/publi
 | CP-47 | Editar con foto nueva y guardado fallido | `POST /storage/v1/object/publicaciones/<uid>/…` + `PATCH` + `DELETE` Storage | 200 / 500 / 200 | Se sube solo la foto nueva y, como falló el guardado, se borra solo esa |
 
 Las reglas de la base (un estudiante no puede cambiar, editar ni borrar la publicación de otro ni sus fotos; solo una Disponible se edita o se borra; transiciones del patrón State; Finalizadas sin repetidas por páginas; `anon` sin permiso) se probaron con 42 casos SQL en Postgres 16 antes de entregar la migración `20261029120000_hu06_mis_publicaciones.sql`.
+
+---
+
+## ANEXO. CASOS DEL API REST DE HU-07 (SPRINT 7)
+
+Archivo: [`app/test/api/chat_api_rest_test.dart`](../app/test/api/chat_api_rest_test.dart). El WebSocket de Supabase Realtime se simula con un `StreamController`.
+
+| ID | Escenario (HU-07) | Endpoint | Respuesta simulada | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| CP-53 | Contactar al vendedor | `POST /rest/v1/rpc/iniciar_conversacion` | 200 (`"conv-9"`) | Solo manda `p_publicacion` (quién escribe sale de la sesión); la conversación lleva el nombre del vendedor y la publicación |
+| CP-54 | Rechazos al iniciar | `POST /rest/v1/rpc/iniciar_conversacion` | 400 (pistas `perfil_incompleto`, `publicacion_no_disponible`, `publicacion_propia`), 404 (`publicacion_no_encontrada`), 400 (`22P02`) | Mensaje del motivo, sin detalles internos |
+| CP-55 | Bandeja | `POST /rest/v1/rpc/mis_conversaciones` | 200 | Manda `p_limite: 50`; interpreta portada, estado, no leídos y "Publicación eliminada" |
+| CP-56 | Historial por páginas | `POST /rest/v1/rpc/mensajes_conversacion` (2 veces) | 200 (30) / 200 (2) | La segunda página manda el cursor |
+| CP-57 | Enviar y recibir | `POST /rest/v1/mensajes` + tiempo real | 201 | Solo manda `conversacion_id` y `texto` (sin autor), sin espacios de sobra; el mensaje llega por el tiempo real (patrón Observer) |
+| CP-58 | Mensaje inválido | — y `POST /rest/v1/mensajes` | (ninguna) / 400 (`mensaje_caracteres`) / 400 (`23514`) | La app no envía `<script>`; el servidor también lo rechaza; longitud fuera de 1 a 500 |
+| CP-59 | Marcar como leída | `POST /rest/v1/rpc/marcar_conversacion_leida` | 204 | Manda `p_conversacion` |
+| CP-60 | Globo de no leídos | `POST /rest/v1/rpc/total_no_leidos` | 200 (`3`) | El globo muestra 3 |
+| CP-61 | Conversación cerrada y spam | `POST /rest/v1/mensajes` | 400 (`conversacion_cerrada`, `demasiados_mensajes`) | Mensaje de solo lectura y "Estás enviando muchos mensajes…" |
+| CP-62 | Conversación ajena | `POST /rest/v1/mensajes`, `rpc/mensajes_conversacion` | 403 (`42501`), 400 (`22P02`) | "No tienes acceso a esta conversación." sin detalles de RLS |
+| CP-63 | Sin conexión | — | (ninguna) | Iniciar, bandeja, mensajes y enviar lanzan `SinConexionFailure`; marcar y el globo no avisan; 0 peticiones |
+| CP-64 | Error del servidor y sin sesión | Todas | 500 / (ninguna) | Mensaje genérico sin IP; sin sesión, `SesionNoIniciadaFailure` y 0 peticiones |
+
+Las reglas de la base (solo los participantes leen y escriben; nadie envía a nombre del otro, edita ni borra mensajes; una conversación Vendida o borrada queda solo para leer; caracteres permitidos; 20 mensajes por minuto; páginas sin repetidos; mensajes en la publicación de Realtime) se probaron con 50 casos SQL en Postgres 16 antes de entregar la migración `20261106120000_hu07_chat.sql`.
