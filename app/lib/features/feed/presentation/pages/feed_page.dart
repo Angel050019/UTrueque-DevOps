@@ -12,6 +12,8 @@ import '../../../../core/widgets/filtros_texto.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../auth/domain/entities/usuario.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
+import '../../../chat/presentation/cubit/no_leidos_cubit.dart';
+import '../../../chat/presentation/widgets/globo_no_leidos.dart';
 import '../../../perfil/domain/entities/perfil.dart';
 import '../../../perfil/domain/repositories/perfil_repository.dart';
 import '../../../perfil/presentation/widgets/avatar_perfil.dart';
@@ -88,6 +90,14 @@ class _FeedPageState extends State<FeedPage> {
     }
   }
 
+  /// HU-07: abre la bandeja de mensajes. Al regresar, se vuelve a pedir el
+  /// número de conversaciones sin leer.
+  Future<void> _irAMensajes() async {
+    final NoLeidosCubit noLeidos = context.read<NoLeidosCubit>();
+    await Navigator.of(context).pushNamed(AppRoutes.mensajes);
+    await noLeidos.actualizar();
+  }
+
   Future<void> _irAMiPerfil() async {
     await Navigator.of(context).pushNamed(AppRoutes.miPerfil);
     // Al regresar se recarga por si el estudiante editó su nombre o foto.
@@ -138,6 +148,24 @@ class _FeedPageState extends State<FeedPage> {
                       ],
                     ),
                   ),
+                  // HU-07: bandeja de mensajes con el globo de no leídos.
+                  // TODO(diseño): ícono de mensajes según Figma.
+                  BlocBuilder<NoLeidosCubit, int>(
+                    builder: (context, noLeidos) => IconButton(
+                      key: FeedKeys.mensajesBoton,
+                      tooltip: 'Mensajes',
+                      onPressed: _irAMensajes,
+                      icon: Badge(
+                        isLabelVisible: noLeidos > 0,
+                        backgroundColor: Colors.transparent,
+                        padding: EdgeInsets.zero,
+                        offset: const Offset(8, -8),
+                        label: GloboNoLeidos(key: FeedKeys.mensajesGlobo, cantidad: noLeidos),
+                        child: const Icon(Icons.chat_bubble_outline_rounded, color: AppColores.primario, size: 26),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
                   Tooltip(
                     message: 'Mi perfil',
                     child: InkWell(

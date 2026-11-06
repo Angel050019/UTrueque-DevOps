@@ -11,6 +11,10 @@ class FeedKeys {
   static const Key publicarBoton = Key('feed_publicar_boton');
   static const Key miPerfilBoton = Key('feed_mi_perfil_boton');
 
+  // HU-07: ícono de mensajes con el globo de no leídos
+  static const Key mensajesBoton = Key('feed_mensajes_boton');
+  static const Key mensajesGlobo = Key('feed_mensajes_globo');
+
   // HU-05: búsqueda y filtros
   /// Campo de texto del buscador.
   static const Key buscador = Key('feed_buscador');

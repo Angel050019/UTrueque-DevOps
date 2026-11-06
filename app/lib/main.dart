@@ -18,6 +18,20 @@ import 'features/auth/presentation/pages/confirmacion_registro_page.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/registro_page.dart';
 import 'features/auth/presentation/pages/splash_page.dart';
+import 'features/chat/data/datasources/chat_remote_datasource.dart';
+import 'features/chat/data/repositories/chat_repository_impl.dart';
+import 'features/chat/domain/repositories/chat_repository.dart';
+import 'features/chat/domain/usecases/enviar_mensaje.dart';
+import 'features/chat/domain/usecases/escuchar_chat.dart';
+import 'features/chat/domain/usecases/marcar_conversacion_leida.dart';
+import 'features/chat/domain/usecases/obtener_conversaciones.dart';
+import 'features/chat/domain/usecases/obtener_mensajes.dart';
+import 'features/chat/domain/usecases/obtener_total_no_leidos.dart';
+import 'features/chat/presentation/cubit/bandeja_cubit.dart';
+import 'features/chat/presentation/cubit/chat_cubit.dart';
+import 'features/chat/presentation/cubit/no_leidos_cubit.dart';
+import 'features/chat/presentation/pages/bandeja_page.dart';
+import 'features/chat/presentation/pages/chat_page.dart';
 import 'features/feed/presentation/cubit/feed_cubit.dart';
 import 'features/feed/presentation/pages/feed_page.dart';
 import 'features/perfil/data/datasources/perfil_remote_datasource.dart';
@@ -86,6 +100,10 @@ class UTruequeApp extends StatelessWidget {
     final PublicacionRepository publicacionRepository = PublicacionRepositoryImpl(
       PublicacionRemoteDataSourceImpl(Supabase.instance.client),
     );
+    // HU-07: chat con Supabase Realtime (patrón Observer).
+    final ChatRepository chatRepository = ChatRepositoryImpl(
+      ChatRemoteDataSourceImpl(Supabase.instance.client),
+    );
 
     // Factory Method: cada pantalla de perfil recibe su propio PerfilCubit.
     PerfilCubit crearPerfilCubit() => PerfilCubit(
@@ -99,6 +117,7 @@ class UTruequeApp extends StatelessWidget {
         RepositoryProvider<AuthRepository>.value(value: authRepository),
         RepositoryProvider<PerfilRepository>.value(value: perfilRepository),
         RepositoryProvider<PublicacionRepository>.value(value: publicacionRepository),
+        RepositoryProvider<ChatRepository>.value(value: chatRepository),
         // HU-06: la hoja "Gestionar publicación" arma sus casos de uso con
         // el repositorio y la red, y avisa de los cambios.
         RepositoryProvider<NetworkInfo>.value(value: networkInfo),
@@ -121,14 +140,26 @@ class UTruequeApp extends StatelessWidget {
             AppRoutes.registro: (_) => const RegistroPage(),
             AppRoutes.confirmacionRegistro: (_) => const ConfirmacionRegistroPage(),
             // HU-04: Feed de publicaciones
-            AppRoutes.feedPrincipal: (_) => BlocProvider(
-                  create: (_) => FeedCubit(
-                    buscarPublicaciones: BuscarPublicaciones(publicacionRepository, networkInfo),
-                    // HU-05: opciones de los filtros y "Mi carrera" por defecto.
-                    obtenerCategorias: ObtenerCategorias(publicacionRepository, networkInfo),
-                    obtenerCatalogo: ObtenerCatalogoAcademico(perfilRepository, networkInfo),
-                    obtenerPerfil: ObtenerPerfil(perfilRepository, networkInfo),
-                  )..cargar(),
+            AppRoutes.feedPrincipal: (_) => MultiBlocProvider(
+                  providers: [
+                    BlocProvider(
+                      create: (_) => FeedCubit(
+                        buscarPublicaciones: BuscarPublicaciones(publicacionRepository, networkInfo),
+                        // HU-05: opciones de los filtros y "Mi carrera" por defecto.
+                        obtenerCategorias: ObtenerCategorias(publicacionRepository, networkInfo),
+                        obtenerCatalogo: ObtenerCatalogoAcademico(perfilRepository, networkInfo),
+                        obtenerPerfil: ObtenerPerfil(perfilRepository, networkInfo),
+                      )..cargar(),
+                    ),
+                    // HU-07: globo de mensajes sin leer.
+                    BlocProvider(
+                      create: (_) => NoLeidosCubit(
+                        obtenerTotal: ObtenerTotalNoLeidos(chatRepository, networkInfo),
+                        escuchar: EscucharChat(chatRepository),
+                        miId: authRepository.usuarioActual?.id,
+                      )..iniciar(),
+                    ),
+                  ],
                   child: const FeedPage(),
                 ),
             // HU-02: Perfil Académico
@@ -172,6 +203,29 @@ class UTruequeApp extends StatelessWidget {
                   )..cargar(),
                   child: const MisPublicacionesPage(),
                 ),
+            // HU-07: Chat directo
+            AppRoutes.mensajes: (_) => BlocProvider(
+                  create: (_) => BandejaCubit(
+                    obtenerConversaciones: ObtenerConversaciones(chatRepository, networkInfo),
+                    escuchar: EscucharChat(chatRepository),
+                    miId: authRepository.usuarioActual?.id,
+                  )..cargar(),
+                  child: const BandejaPage(),
+                ),
+            AppRoutes.chat: (context) {
+              final ChatArgs args = ModalRoute.of(context)?.settings.arguments as ChatArgs;
+              return BlocProvider(
+                create: (_) => ChatCubit(
+                  conversacion: args.conversacion,
+                  miId: authRepository.usuarioActual?.id,
+                  obtenerMensajes: ObtenerMensajes(chatRepository, networkInfo),
+                  enviarMensaje: EnviarMensaje(chatRepository, networkInfo),
+                  marcarLeida: MarcarConversacionLeida(chatRepository, networkInfo),
+                  escuchar: EscucharChat(chatRepository),
+                )..abrir(),
+                child: const ChatPage(),
+              );
+            },
             AppRoutes.editarPublicacion: (context) {
               final Publicacion original =
                   ModalRoute.of(context)?.settings.arguments as Publicacion;
