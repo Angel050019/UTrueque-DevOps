@@ -7,8 +7,8 @@ import '../../../../core/utils/formato_fecha.dart';
 import '../../../../core/utils/formato_precio.dart';
 import '../../../../core/widgets/app_ui.dart';
 import '../../../../core/widgets/aviso_pantalla.dart';
-import '../../../../core/widgets/en_desarrollo_page.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../../chat/presentation/contactar_vendedor.dart';
 import '../../../perfil/presentation/widgets/avatar_perfil.dart';
 import '../../domain/entities/modalidad.dart';
 import '../../domain/entities/publicacion.dart';
@@ -361,8 +361,8 @@ class _TarjetaDueno extends StatelessWidget {
   }
 }
 
-/// Botón de abajo: "Contactar al vendedor" (abre "En desarrollo" hasta el
-/// chat del Sprint 7) o, si es mía, "Gestionar publicación" (HU-06).
+/// Botón de abajo: "Contactar al vendedor" (HU-07, abre el chat) o, si es
+/// mía, "Gestionar publicación" (HU-06).
 // TODO(diseño): botón fijo de abajo según Figma.
 class _Acciones extends StatelessWidget {
   const _Acciones({required this.state});
@@ -394,20 +394,8 @@ class _Acciones extends StatelessWidget {
         onPressed: () => _gestionar(context),
       );
     } else {
-      boton = PrimaryButton(
-        key: DetalleKeys.contactarBoton,
-        texto: 'Contactar al vendedor',
-        // Reservada o Vendida: no se puede contactar (patrón State).
-        onPressed: state.puedeContactar
-            ? () => EnDesarrolloPage.abrir(
-                  context,
-                  titulo: 'Chat',
-                  mensaje: 'Muy pronto podrás escribirle a quien publicó el '
-                      'artículo para ponerse de acuerdo.',
-                  sprint: 'Sprint 7',
-                )
-            : null,
-      );
+      // Reservada o Vendida: no se puede contactar (patrón State).
+      boton = _BotonContactar(publicacion: state.publicacion, habilitado: state.puedeContactar);
     }
     return SafeArea(
       top: false,
@@ -415,6 +403,38 @@ class _Acciones extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(AppMedidas.margen, 8, AppMedidas.margen, 12),
         child: boton,
       ),
+    );
+  }
+}
+
+/// HU-07: "Contactar al vendedor". Mientras se abre la conversación, el
+/// botón muestra que está cargando y no se puede tocar dos veces.
+class _BotonContactar extends StatefulWidget {
+  const _BotonContactar({required this.publicacion, required this.habilitado});
+
+  final Publicacion publicacion;
+  final bool habilitado;
+
+  @override
+  State<_BotonContactar> createState() => _BotonContactarState();
+}
+
+class _BotonContactarState extends State<_BotonContactar> {
+  bool _abriendo = false;
+
+  Future<void> _contactar() async {
+    setState(() => _abriendo = true);
+    await contactarVendedor(context, widget.publicacion);
+    if (mounted) setState(() => _abriendo = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PrimaryButton(
+      key: DetalleKeys.contactarBoton,
+      texto: 'Contactar al vendedor',
+      cargando: _abriendo,
+      onPressed: widget.habilitado && !_abriendo ? _contactar : null,
     );
   }
 }

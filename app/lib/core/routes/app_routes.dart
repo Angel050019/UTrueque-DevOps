@@ -27,4 +27,9 @@ class AppRoutes {
 
   /// Recibe la `Publicacion` que se va a editar.
   static const String editarPublicacion = '/publicacion/editar';
+
+  // HU-07: Chat directo
+  /// Recibe un `ChatArgs` con la conversación.
+  static const String chat = '/chat';
+  static const String mensajes = '/mensajes';
 }
