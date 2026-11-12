@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -17,7 +19,7 @@ import '../encuentro_keys.dart';
 
 /// Hoja "Proponer punto de encuentro" (HU-08, Escenarios 1, 5 y 6).
 ///
-/// Tres pasos: lugar (con el mapa del campus), día y hora (agrupada en
+/// Tres pasos: lugar (se toca en el mapa del campus), día y hora (agrupada en
 /// mañana, mediodía y tarde). Solo deja elegir un lugar del catálogo
 /// oficial, un día de lunes a viernes y un horario permitido. No hay
 /// campos para escribir.
@@ -129,13 +131,10 @@ class HojaProponerEncuentro extends StatelessWidget {
     final DateTime? dia = state.dia;
     final DateTime? hora = state.hora;
     return <Widget>[
-      _MapaCampus(punto: punto),
-      const SizedBox(height: 20),
-      const _Paso(numero: 1, titulo: 'Lugar'),
+      const _Paso(numero: 1, titulo: 'Toca el lugar en el mapa'),
       const SizedBox(height: 10),
-      for (final PuntoEncuentro p in state.puntos)
-        _OpcionLugar(punto: p, elegido: punto?.id == p.id, onTap: () => cubit.elegirPunto(p)),
-      const SizedBox(height: 14),
+      _MapaCampus(puntos: state.puntos, elegido: punto, onElegir: cubit.elegirPunto),
+      const SizedBox(height: 20),
       const _Paso(numero: 2, titulo: 'Día'),
       const SizedBox(height: 10),
       if (state.dias.isEmpty)
@@ -214,107 +213,16 @@ class _Paso extends StatelessWidget {
 
 /// Dónde está cada lugar en el mapa del campus, como fracción del ancho y
 /// del alto de la imagen (0 = izquierda o arriba, 1 = derecha o abajo).
-/// Es solo para dibujar; el catálogo vive en la base de datos.
-// TODO(diseño): confirmar con los Product Owners dónde está la Biblioteca para marcarla.
+/// Es solo para dibujar; el catálogo vive en la base de datos. Un lugar
+/// nuevo del catálogo que no esté aquí aparece abajo del mapa como botón.
+// TODO(diseño): si cambia la imagen del mapa, hay que volver a medir estas posiciones.
 const Map<String, Offset> _ubicacionEnMapa = <String, Offset>{
-  'cafeteria': Offset(0.406, 0.526),
-  'edificio-k': Offset(0.104, 0.691),
-  'explanada': Offset(0.522, 0.795),
-  'acceso': Offset(0.613, 0.917),
+  'biblioteca': Offset(0.468, 0.294), // Edificio H
+  'cafeteria': Offset(0.555, 0.387),
+  'edificio-k': Offset(0.121, 0.628),
+  'explanada': Offset(0.718, 0.774),
+  'acceso': Offset(0.847, 0.897),
 };
-
-/// Mapa del campus (se puede acercar con dos dedos) con un marcador en el
-/// lugar elegido.
-class _MapaCampus extends StatelessWidget {
-  const _MapaCampus({required this.punto});
-
-  final PuntoEncuentro? punto;
-
-  static const double _proporcion = 890 / 576;
-
-  @override
-  Widget build(BuildContext context) {
-    final PuntoEncuentro? p = punto;
-    final Offset? ubicacion = p == null ? null : _ubicacionEnMapa[p.id];
-    final String pie = p == null
-        ? 'Elige un lugar para verlo en el mapa. Pellizca para acercar.'
-        : ubicacion == null
-            ? '${p.nombre}: todavía no está marcado en el mapa.'
-            : p.nombre;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(AppMedidas.radioTarjeta),
-          child: AspectRatio(
-            aspectRatio: _proporcion,
-            child: InteractiveViewer(
-              maxScale: 4,
-              child: LayoutBuilder(
-                builder: (context, medidas) {
-                  return Stack(
-                    children: [
-                      Positioned.fill(
-                        child: Image.asset(
-                          'assets/images/mapa_utsjr.png',
-                          fit: BoxFit.cover,
-                          semanticLabel: 'Mapa del campus de la UTSJR',
-                        ),
-                      ),
-                      if (ubicacion != null)
-                        AnimatedPositioned(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeOutBack,
-                          left: ubicacion.dx * medidas.maxWidth - 18,
-                          top: ubicacion.dy * medidas.maxHeight - 36,
-                          child: const _Marcador(),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Row(
-          children: [
-            Icon(
-              ubicacion == null ? Icons.touch_app_rounded : Icons.place_rounded,
-              size: 16,
-              color: AppColores.textoSecundario,
-            ),
-            const SizedBox(width: 6),
-            Expanded(child: Text(pie, style: AppTexto.cuerpo(size: 12))),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// El pin del mapa.
-class _Marcador extends StatelessWidget {
-  const _Marcador();
-
-  @override
-  Widget build(BuildContext context) {
-    return const SizedBox(
-      width: 36,
-      height: 36,
-      child: Stack(
-        alignment: Alignment.topCenter,
-        children: [
-          Icon(Icons.location_on, size: 36, color: AppColores.primarioOscuro),
-          Positioned(
-            top: 7,
-            child: Icon(Icons.circle, size: 12, color: AppColores.acento),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 /// Ícono de cada lugar del catálogo.
 IconData _iconoDe(String id) => switch (id) {
@@ -326,9 +234,120 @@ IconData _iconoDe(String id) => switch (id) {
       _ => Icons.place_rounded,
     };
 
-/// Un lugar del catálogo.
-class _OpcionLugar extends StatelessWidget {
-  const _OpcionLugar({required this.punto, required this.elegido, required this.onTap});
+/// Mapa del campus para ELEGIR el lugar: cada lugar del catálogo es un pin
+/// que se toca. El elegido crece, cambia a verde menta y muestra su nombre.
+/// Se puede acercar con dos dedos.
+class _MapaCampus extends StatelessWidget {
+  const _MapaCampus({required this.puntos, required this.elegido, required this.onElegir});
+
+  final List<PuntoEncuentro> puntos;
+  final PuntoEncuentro? elegido;
+  final ValueChanged<PuntoEncuentro> onElegir;
+
+  static const double _proporcion = 1240 / 892;
+  static const double _pin = 44;
+  static const double _anchoEtiqueta = 170;
+
+  @override
+  Widget build(BuildContext context) {
+    final PuntoEncuentro? sel = elegido;
+    final List<PuntoEncuentro> enMapa = puntos.where((p) => _ubicacionEnMapa.containsKey(p.id)).toList();
+    final List<PuntoEncuentro> fueraDelMapa = puntos.where((p) => !_ubicacionEnMapa.containsKey(p.id)).toList();
+    // El elegido se dibuja al final para que quede encima de los demás.
+    enMapa.sort((a, b) => (a.id == sel?.id ? 1 : 0).compareTo(b.id == sel?.id ? 1 : 0));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppMedidas.radioTarjeta),
+            border: Border.all(color: AppColores.borde),
+            boxShadow: const [BoxShadow(color: Color(0x1A033B56), blurRadius: 12, offset: Offset(0, 4))],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppMedidas.radioTarjeta),
+            child: AspectRatio(
+              aspectRatio: _proporcion,
+              child: InteractiveViewer(
+                maxScale: 3,
+                child: LayoutBuilder(
+                  builder: (context, medidas) {
+                    final double w = medidas.maxWidth;
+                    final double h = medidas.maxHeight;
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned.fill(
+                          child: Image.asset(
+                            'assets/images/mapa_utsjr.jpg',
+                            fit: BoxFit.cover,
+                            semanticLabel: 'Mapa del campus de la UTSJR',
+                          ),
+                        ),
+                        // Velo suave para que los pines resalten sobre el dibujo.
+                        Positioned.fill(child: ColoredBox(color: AppColores.primarioOscuro.withValues(alpha: 0.12))),
+                        if (sel == null)
+                          const Positioned(
+                            left: 10,
+                            top: 10,
+                            child: _Globo(texto: 'Toca un punto para elegirlo', icono: Icons.touch_app_rounded),
+                          ),
+                        for (final PuntoEncuentro p in enMapa) ...[
+                          if (p.id == sel?.id)
+                            Positioned(
+                              left: math.max(4.0, math.min(_ubicacionEnMapa[p.id]!.dx * w - _anchoEtiqueta / 2, w - _anchoEtiqueta - 4)),
+                              top: math.max(4.0, _ubicacionEnMapa[p.id]!.dy * h - _pin / 2 - 30),
+                              width: _anchoEtiqueta,
+                              child: Center(child: _Globo(texto: p.nombre)),
+                            ),
+                          Positioned(
+                            left: _ubicacionEnMapa[p.id]!.dx * w - _pin / 2,
+                            top: _ubicacionEnMapa[p.id]!.dy * h - _pin / 2,
+                            child: _PinLugar(
+                              key: EncuentroKeys.punto(p.id),
+                              punto: p,
+                              elegido: p.id == sel?.id,
+                              onTap: () => onElegir(p),
+                            ),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        _InfoLugar(punto: sel),
+        if (fueraDelMapa.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final PuntoEncuentro p in fueraDelMapa)
+                ChoiceChip(
+                  key: EncuentroKeys.punto(p.id),
+                  avatar: Icon(_iconoDe(p.id), size: 18, color: AppColores.primario),
+                  label: Text(p.nombre),
+                  selected: p.id == sel?.id,
+                  onSelected: (_) => onElegir(p),
+                  selectedColor: AppColores.primarioSuave,
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Un pin del mapa: círculo con el ícono del lugar. El área para tocar es
+/// de 44 x 44 aunque el círculo se vea más chico.
+class _PinLugar extends StatelessWidget {
+  const _PinLugar({super.key, required this.punto, required this.elegido, required this.onTap});
 
   final PuntoEncuentro punto;
   final bool elegido;
@@ -336,49 +355,128 @@ class _OpcionLugar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: elegido ? AppColores.primarioSuave : AppColores.fondo,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppMedidas.radioCampo),
-          side: BorderSide(color: elegido ? AppColores.primario : AppColores.borde, width: elegido ? 1.5 : 1),
-        ),
-        child: InkWell(
-          key: EncuentroKeys.punto(punto.id),
-          borderRadius: BorderRadius.circular(AppMedidas.radioCampo),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: elegido ? AppColores.primario : AppColores.superficie,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    _iconoDe(punto.id),
-                    size: 22,
-                    color: elegido ? AppColores.acento : AppColores.primario,
-                  ),
+    return Semantics(
+      button: true,
+      selected: elegido,
+      label: punto.nombre,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: SizedBox(
+          width: _MapaCampus._pin,
+          height: _MapaCampus._pin,
+          child: Center(
+            child: AnimatedScale(
+              scale: elegido ? 1.3 : 1,
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutBack,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 250),
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: elegido ? AppColores.acento : AppColores.primario,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColores.superficie, width: 2.5),
+                  boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 6, offset: Offset(0, 2))],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(punto.nombre, style: AppTexto.subtitulo(size: 15)),
-                      if (punto.referencia.isNotEmpty) Text(punto.referencia, style: AppTexto.cuerpo(size: 12)),
-                    ],
-                  ),
+                child: Icon(
+                  _iconoDe(punto.id),
+                  size: 16,
+                  color: elegido ? AppColores.primarioOscuro : AppColores.sobrePrimario,
                 ),
-                if (elegido) const Icon(Icons.check_circle_rounded, color: AppColores.primario, size: 22),
-              ],
+              ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Globo de texto sobre el mapa (nombre del lugar elegido o la indicación).
+class _Globo extends StatelessWidget {
+  const _Globo({required this.texto, this.icono});
+
+  final String texto;
+  final IconData? icono;
+
+  @override
+  Widget build(BuildContext context) {
+    final IconData? i = icono;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColores.primarioOscuro.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (i != null) ...[
+            Icon(i, size: 14, color: AppColores.acento),
+            const SizedBox(width: 6),
+          ],
+          Flexible(
+            child: Text(
+              texto,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTexto.subtitulo(size: 11, color: AppColores.sobrePrimario),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Debajo del mapa: el lugar elegido con su referencia, o qué hacer.
+class _InfoLugar extends StatelessWidget {
+  const _InfoLugar({required this.punto});
+
+  final PuntoEncuentro? punto;
+
+  @override
+  Widget build(BuildContext context) {
+    final PuntoEncuentro? p = punto;
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 200),
+      child: Container(
+        key: ValueKey<String?>(p?.id),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: p == null ? AppColores.fondo : AppColores.primarioSuave,
+          borderRadius: BorderRadius.circular(AppMedidas.radioCampo),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: p == null ? AppColores.superficie : AppColores.primario,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                p == null ? Icons.touch_app_rounded : _iconoDe(p.id),
+                size: 20,
+                color: p == null ? AppColores.textoSecundario : AppColores.acento,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: p == null
+                  ? Text('Toca un punto del mapa para elegir dónde se verán.', style: AppTexto.cuerpo(size: 13))
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(p.nombre, style: AppTexto.subtitulo(size: 14)),
+                        if (p.referencia.isNotEmpty) Text(p.referencia, style: AppTexto.cuerpo(size: 12)),
+                      ],
+                    ),
+            ),
+          ],
         ),
       ),
     );
