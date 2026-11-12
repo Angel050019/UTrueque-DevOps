@@ -31,7 +31,7 @@ void main() {
   group('Modelos de HU-08', () {
     test('PuntoEncuentroModel lee una fila del catálogo', () {
       final PuntoEncuentroModel p = PuntoEncuentroModel.fromMap(
-        <String, dynamic>{'id': 'cafeteria', 'nombre': 'Cafetería - Área de mesas', 'referencia': null},
+        const <String, dynamic>{'id': 'cafeteria', 'nombre': 'Cafetería - Área de mesas', 'referencia': null},
       );
       expect(p.id, 'cafeteria');
       expect(p.nombre, 'Cafetería - Área de mesas');
@@ -52,7 +52,7 @@ void main() {
     });
 
     test('MensajeModel lee el tipo y el encuentro de una tarjeta (HU-08)', () {
-      final MensajeModel m = MensajeModel.fromMap(<String, dynamic>{
+      final MensajeModel m = MensajeModel.fromMap(const <String, dynamic>{
         'id': 'm9',
         'conversacion_id': idConversacion,
         'autor_id': idVendedor,
@@ -67,7 +67,7 @@ void main() {
     });
 
     test('MensajeModel sin tipo (HU-07 o migración sin aplicar) es texto normal', () {
-      final MensajeModel m = MensajeModel.fromMap(<String, dynamic>{
+      final MensajeModel m = MensajeModel.fromMap(const <String, dynamic>{
         'id': 'm1',
         'conversacion_id': idConversacion,
         'autor_id': idVendedor,
@@ -84,7 +84,7 @@ void main() {
     late _MockDataSource fuente;
     late EncuentrosRepositoryImpl repositorio;
 
-    setUpAll(() => registerFallbackValue<SolicitudEncuentro>(const CancelacionEncuentro(encuentroId: 'x')));
+    setUpAll(() => registerFallbackValue(const CancelacionEncuentro(encuentroId: 'x')));
 
     setUp(() {
       fuente = _MockDataSource();

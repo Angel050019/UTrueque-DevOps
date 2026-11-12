@@ -14,7 +14,7 @@ void main() {
   late MockEncuentrosRepository repo;
   late MockRed red;
 
-  setUpAll(() => registerFallbackValue<SolicitudEncuentro>(const CancelacionEncuentro(encuentroId: 'x')));
+  setUpAll(() => registerFallbackValue(const CancelacionEncuentro(encuentroId: 'x')));
 
   setUp(() {
     repo = MockEncuentrosRepository();
