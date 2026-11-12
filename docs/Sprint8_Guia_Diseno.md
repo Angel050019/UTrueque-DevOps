@@ -18,7 +18,7 @@ El punto de encuentro ya funciona dentro del chat (issue #3) y usa la paleta del
 
 Todas las rutas de archivo son relativas a `app/lib/`. Busca `TODO(diseño)` en VS Code (`Ctrl+Shift+F`) para ver los lugares marcados.
 
-**Hoja, de arriba hacia abajo:** título y explicación del horario → **Lugar** (una opción por cada lugar del catálogo, con su nombre y su referencia) → **Día** (botones deslizables: "mié 11", "jue 12"… solo de lunes a viernes) → **Hora** (botones de 7:00 a 20:00 cada media hora; solo los que todavía se pueden elegir) → mensaje de error, si hay → "Enviar propuesta". **No hay ningún campo para escribir**: así no se pueden proponer lugares fuera del campus.
+**Hoja, de arriba hacia abajo:** título con ícono → **mapa del campus** (`assets/images/mapa_utsjr.png`; se acerca con dos dedos y muestra un pin en el lugar elegido; las posiciones están en `_ubicacionEnMapa`, falta la Biblioteca) → **1 Lugar** (tarjetas con ícono, nombre y referencia) → **2 Día** (tarjetas "mié / 18", solo de lunes a viernes) → **3 Hora** (pestañas Mañana, Mediodía y Tarde, y solo las horas de ese bloque en cuatro columnas) → resumen de lo elegido → "Enviar propuesta". **No hay ningún campo para escribir**: así no se pueden proponer lugares fuera del campus.
 
 **Tarjetas (hay cuatro clases):**
 
