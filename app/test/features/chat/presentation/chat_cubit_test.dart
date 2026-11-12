@@ -344,4 +344,38 @@ void main() {
       expect: () => [listo()],
     );
   });
+
+  group('HU-08: actualizar después de proponer, responder o cancelar un encuentro', () {
+    test('pide los mensajes más recientes y agrega la tarjeta sin recargar la pantalla', () async {
+      final ChatCubit cubit = crearCubit();
+      await cubit.abrir();
+      final Mensaje tarjeta = Mensaje(
+        id: 'm3',
+        conversacionId: idConversacion,
+        autorId: idComprador,
+        texto: 'Propuso vernos en Biblioteca - Entrada Principal el jueves 12 de noviembre a las 13:00.',
+        creadoEn: hace10.add(const Duration(minutes: 101)),
+        tipo: TipoMensaje.propuesta,
+        encuentroId: 'enc-1',
+      );
+      when(() => obtener(any())).thenAnswer(
+        (_) async => PaginaMensajes(mensajes: [tarjeta, mensaje('m2', minuto: 100), mensaje('m1', minuto: 99)]),
+      );
+
+      await cubit.actualizar();
+
+      final ChatListo estado = cubit.state as ChatListo;
+      expect(estado.mensajes, hasLength(3));
+      expect(estado.mensajes.last, tarjeta);
+      expect(estado.mensajes.last.esDeEncuentro, isTrue);
+      await cubit.close();
+    });
+
+    test('si el chat todavía no está listo, no pide nada', () async {
+      final ChatCubit cubit = crearCubit();
+      await cubit.actualizar();
+      verifyNever(() => obtener(any()));
+      await cubit.close();
+    });
+  });
 }
