@@ -8,6 +8,12 @@ import '../../../../core/widgets/app_ui.dart';
 import '../../../../core/widgets/aviso_pantalla.dart';
 import '../../../../core/widgets/filtros_texto.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../../encuentros/domain/entities/encuentro.dart';
+import '../../../encuentros/presentation/cubit/encuentros_cubit.dart';
+import '../../../encuentros/presentation/cubit/encuentros_state.dart';
+import '../../../encuentros/presentation/encuentro_keys.dart';
+import '../../../encuentros/presentation/widgets/hoja_proponer_encuentro.dart';
+import '../../../encuentros/presentation/widgets/tarjeta_encuentro.dart';
 import '../../../perfil/presentation/widgets/avatar_perfil.dart';
 import '../../domain/entities/conversacion.dart';
 import '../../domain/entities/mensaje.dart';
@@ -31,7 +37,10 @@ class ChatArgs {
 /// más nuevo abajo; al subir se cargan los anteriores). Abajo: el campo de
 /// texto, o el aviso de conversación cerrada.
 ///
-/// Solo dibuja el estado del [ChatCubit].
+/// HU-08: arriba, el aviso fijo del encuentro confirmado; en la lista, las
+/// tarjetas de encuentro; junto al campo, "Proponer punto de encuentro".
+///
+/// Solo dibuja el estado del [ChatCubit] y del [EncuentrosCubit].
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
 
@@ -71,39 +80,113 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  // ---------------------------------------------------------------------
+  // HU-08: punto de encuentro
+  // ---------------------------------------------------------------------
+
+  void _escucharEncuentros(BuildContext context, EncuentrosState state) {
+    final String? aviso = state.aviso;
+    if (aviso == null) return;
+    mostrarMensaje(context, aviso, esError: state.avisoEsError);
+    context.read<EncuentrosCubit>().avisoMostrado();
+  }
+
+  /// Después de una acción se piden los mensajes nuevos, por si el tiempo
+  /// real tarda o está apagado (la tarjeta la crea el servidor).
+  void _alCambiarEncuentro(bool enviado) {
+    if (enviado && mounted) context.read<ChatCubit>().actualizar();
+  }
+
+  Future<void> _proponer() async {
+    final EncuentrosCubit encuentros = context.read<EncuentrosCubit>();
+    final bool enviada = await HojaProponerEncuentro.abrir(
+      context,
+      conversacion: encuentros.conversacion,
+      encuentroActivo: encuentros.state.activoAl(encuentros.ahora),
+    );
+    if (!enviada || !mounted) return;
+    mostrarMensaje(context, 'Propuesta enviada.');
+    _alCambiarEncuentro(true);
+    await encuentros.actualizar();
+  }
+
+  Future<void> _aceptar(Encuentro encuentro) async =>
+      _alCambiarEncuentro(await context.read<EncuentrosCubit>().responder(encuentro, acepta: true));
+
+  Future<void> _rechazar(Encuentro encuentro) async =>
+      _alCambiarEncuentro(await context.read<EncuentrosCubit>().responder(encuentro, acepta: false));
+
+  /// Escenario 4: se pide confirmación antes de cancelar.
+  Future<void> _cancelar(Encuentro encuentro) async {
+    final EncuentrosCubit encuentros = context.read<EncuentrosCubit>();
+    final bool? confirmado = await showDialog<bool>(
+      context: context,
+      builder: (dialogo) => AlertDialog(
+        title: const Text('¿Cancelar el encuentro?'),
+        content: Text('Se avisará al otro estudiante que ya no se verán en ${encuentro.punto.nombre}.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(dialogo).pop(false), child: const Text('No')),
+          TextButton(
+            key: EncuentroKeys.confirmarCancelar,
+            onPressed: () => Navigator.of(dialogo).pop(true),
+            style: TextButton.styleFrom(foregroundColor: AppColores.error),
+            child: const Text('Sí, cancelar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado != true) return;
+    _alCambiarEncuentro(await encuentros.cancelar(encuentro));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       key: ChatKeys.pantalla,
       body: SafeArea(
-        child: BlocConsumer<ChatCubit, ChatState>(
-          listener: _escuchar,
-          builder: (context, state) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _Encabezado(conversacion: state.conversacion),
-                const Divider(height: 1, color: AppColores.borde),
-                Expanded(child: _contenido(context, state)),
-                if (state is ChatListo)
-                  state.cerrada
-                      ? const _AvisoCerrada()
-                      : _CampoMensaje(
-                          controller: _texto,
-                          enviando: state.enviando,
-                          puedeEnviar: (texto) => _validador.sePuedeEnviar(texto),
-                          onEnviar: _enviar,
-                        ),
-              ],
-            );
-          },
+        child: BlocListener<EncuentrosCubit, EncuentrosState>(
+          listenWhen: (antes, ahora) => ahora.aviso != null && antes.aviso != ahora.aviso,
+          listener: _escucharEncuentros,
+          child: BlocConsumer<ChatCubit, ChatState>(
+            listener: _escuchar,
+            builder: (context, state) {
+              return BlocBuilder<EncuentrosCubit, EncuentrosState>(
+                builder: (context, encuentros) {
+                  final EncuentrosCubit cubitEncuentros = context.read<EncuentrosCubit>();
+                  final Encuentro? confirmado = encuentros.confirmadoAl(cubitEncuentros.ahora);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _Encabezado(conversacion: state.conversacion),
+                      const Divider(height: 1, color: AppColores.borde),
+                      // HU-08, Escenario 2: aviso fijo del encuentro confirmado.
+                      if (confirmado != null) AvisoEncuentroConfirmado(encuentro: confirmado),
+                      Expanded(child: _contenido(context, state, encuentros)),
+                      if (state is ChatListo)
+                        state.cerrada
+                            ? const _AvisoCerrada()
+                            : _CampoMensaje(
+                                controller: _texto,
+                                enviando: state.enviando,
+                                puedeEnviar: (texto) => _validador.sePuedeEnviar(texto),
+                                onEnviar: _enviar,
+                                // HU-08, Escenarios 7 y 10.
+                                onProponer: cubitEncuentros.puedeProponer ? _proponer : null,
+                              ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
-  Widget _contenido(BuildContext context, ChatState state) {
+  Widget _contenido(BuildContext context, ChatState state, EncuentrosState encuentros) {
     final ChatCubit cubit = context.read<ChatCubit>();
+    final EncuentrosCubit cubitEncuentros = context.read<EncuentrosCubit>();
     if (state is ChatError) {
       // TODO(diseño): ilustración de error y de sin conexión.
       return AvisoPantalla(
@@ -149,6 +232,19 @@ class _ChatPageState extends State<ChatPage> {
         itemBuilder: (context, i) {
           if (i == mensajes.length) return _InicioDeLista(state: state, onReintentar: cubit.cargarAnteriores);
           final Mensaje mensaje = mensajes[mensajes.length - 1 - i];
+          if (mensaje.esDeEncuentro) {
+            // HU-08: tarjeta de encuentro.
+            return TarjetaEncuentro(
+              mensaje: mensaje,
+              encuentro: encuentros.porId(mensaje.encuentroId),
+              miId: cubit.miId,
+              ahora: cubitEncuentros.ahora,
+              habilitada: !encuentros.enviando && !cubitEncuentros.cerrada && !state.cerrada,
+              onAceptar: _aceptar,
+              onRechazar: _rechazar,
+              onCancelar: _cancelar,
+            );
+          }
           return BurbujaMensaje(mensaje: mensaje, esMio: mensaje.esDe(cubit.miId));
         },
       ),
@@ -210,12 +306,16 @@ class _CampoMensaje extends StatefulWidget {
     required this.enviando,
     required this.puedeEnviar,
     required this.onEnviar,
+    required this.onProponer,
   });
 
   final TextEditingController controller;
   final bool enviando;
   final bool Function(String texto) puedeEnviar;
   final VoidCallback onEnviar;
+
+  /// HU-08: "Proponer punto de encuentro"; `null` lo deshabilita.
+  final VoidCallback? onProponer;
 
   @override
   State<_CampoMensaje> createState() => _CampoMensajeState();
@@ -240,7 +340,7 @@ class _CampoMensajeState extends State<_CampoMensaje> {
   Widget build(BuildContext context) {
     final bool habilitado = !widget.enviando && widget.puedeEnviar(widget.controller.text);
     return Container(
-      padding: const EdgeInsets.fromLTRB(AppMedidas.margen, 8, 8, 8),
+      padding: const EdgeInsets.all(8),
       decoration: const BoxDecoration(
         color: AppColores.superficie,
         border: Border(top: BorderSide(color: AppColores.borde)),
@@ -248,6 +348,15 @@ class _CampoMensajeState extends State<_CampoMensaje> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          // HU-08: botón para proponer un punto de encuentro.
+          IconButton(
+            key: EncuentroKeys.botonProponer,
+            tooltip: 'Proponer punto de encuentro',
+            onPressed: widget.onProponer,
+            color: AppColores.primario,
+            disabledColor: AppColores.borde,
+            icon: const Icon(Icons.place_rounded),
+          ),
           Expanded(
             child: TextField(
               key: ChatKeys.campoTexto,

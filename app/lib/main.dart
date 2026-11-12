@@ -32,6 +32,12 @@ import 'features/chat/presentation/cubit/chat_cubit.dart';
 import 'features/chat/presentation/cubit/no_leidos_cubit.dart';
 import 'features/chat/presentation/pages/bandeja_page.dart';
 import 'features/chat/presentation/pages/chat_page.dart';
+import 'features/encuentros/data/datasources/encuentros_remote_datasource.dart';
+import 'features/encuentros/data/repositories/encuentros_repository_impl.dart';
+import 'features/encuentros/domain/repositories/encuentros_repository.dart';
+import 'features/encuentros/domain/usecases/enviar_solicitud_encuentro.dart';
+import 'features/encuentros/domain/usecases/obtener_encuentros.dart';
+import 'features/encuentros/presentation/cubit/encuentros_cubit.dart';
 import 'features/feed/presentation/cubit/feed_cubit.dart';
 import 'features/feed/presentation/pages/feed_page.dart';
 import 'features/perfil/data/datasources/perfil_remote_datasource.dart';
@@ -104,6 +110,10 @@ class UTruequeApp extends StatelessWidget {
     final ChatRepository chatRepository = ChatRepositoryImpl(
       ChatRemoteDataSourceImpl(Supabase.instance.client),
     );
+    // HU-08: puntos de encuentro (patrón Factory Method).
+    final EncuentrosRepository encuentrosRepository = EncuentrosRepositoryImpl(
+      EncuentrosRemoteDataSourceImpl(Supabase.instance.client),
+    );
 
     // Factory Method: cada pantalla de perfil recibe su propio PerfilCubit.
     PerfilCubit crearPerfilCubit() => PerfilCubit(
@@ -118,6 +128,8 @@ class UTruequeApp extends StatelessWidget {
         RepositoryProvider<PerfilRepository>.value(value: perfilRepository),
         RepositoryProvider<PublicacionRepository>.value(value: publicacionRepository),
         RepositoryProvider<ChatRepository>.value(value: chatRepository),
+        // HU-08: la hoja "Proponer punto de encuentro" arma sus casos de uso.
+        RepositoryProvider<EncuentrosRepository>.value(value: encuentrosRepository),
         // HU-06: la hoja "Gestionar publicación" arma sus casos de uso con
         // el repositorio y la red, y avisa de los cambios.
         RepositoryProvider<NetworkInfo>.value(value: networkInfo),
@@ -214,15 +226,29 @@ class UTruequeApp extends StatelessWidget {
                 ),
             AppRoutes.chat: (context) {
               final ChatArgs args = ModalRoute.of(context)?.settings.arguments as ChatArgs;
-              return BlocProvider(
-                create: (_) => ChatCubit(
-                  conversacion: args.conversacion,
-                  miId: authRepository.usuarioActual?.id,
-                  obtenerMensajes: ObtenerMensajes(chatRepository, networkInfo),
-                  enviarMensaje: EnviarMensaje(chatRepository, networkInfo),
-                  marcarLeida: MarcarConversacionLeida(chatRepository, networkInfo),
-                  escuchar: EscucharChat(chatRepository),
-                )..abrir(),
+              return MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => ChatCubit(
+                      conversacion: args.conversacion,
+                      miId: authRepository.usuarioActual?.id,
+                      obtenerMensajes: ObtenerMensajes(chatRepository, networkInfo),
+                      enviarMensaje: EnviarMensaje(chatRepository, networkInfo),
+                      marcarLeida: MarcarConversacionLeida(chatRepository, networkInfo),
+                      escuchar: EscucharChat(chatRepository),
+                    )..abrir(),
+                  ),
+                  // HU-08: tarjetas y aviso fijo del punto de encuentro.
+                  BlocProvider(
+                    create: (_) => EncuentrosCubit(
+                      conversacion: args.conversacion,
+                      miId: authRepository.usuarioActual?.id,
+                      obtenerEncuentros: ObtenerEncuentros(encuentrosRepository, networkInfo),
+                      enviarSolicitud: EnviarSolicitudEncuentro(encuentrosRepository, networkInfo),
+                      escuchar: EscucharChat(chatRepository),
+                    )..cargar(),
+                  ),
+                ],
                 child: const ChatPage(),
               );
             },
