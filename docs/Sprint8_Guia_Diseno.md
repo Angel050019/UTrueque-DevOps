@@ -18,7 +18,11 @@ El punto de encuentro ya funciona dentro del chat (issue #3) y usa la paleta del
 
 Todas las rutas de archivo son relativas a `app/lib/`. Busca `TODO(diseño)` en VS Code (`Ctrl+Shift+F`) para ver los lugares marcados.
 
-**Hoja, de arriba hacia abajo:** título con ícono → **1 Toca el lugar en el mapa** (`assets/images/mapa_utsjr.jpg`: cada lugar del catálogo es un pin con su ícono; al tocarlo crece, se pone verde menta y muestra su nombre; se puede acercar con dos dedos; las posiciones están en `_ubicacionEnMapa`, la Biblioteca es el edificio H) → tarjeta con el lugar elegido y su referencia → **2 Día** (tarjetas "mié / 18", solo de lunes a viernes) → **3 Hora** (pestañas Mañana, Mediodía y Tarde, y solo las horas de ese bloque en cuatro columnas) → resumen → "Enviar propuesta". Si en la base se agrega un lugar que no tiene posición en el mapa, aparece como botón debajo del mapa. **No hay ningún campo para escribir**.
+**Hoja, de arriba hacia abajo:** título con ícono → **1 Toca el lugar en el mapa** (`widgets/mapa_campus.dart`, imagen `assets/images/mapa_utsjr.jpg`: cada lugar es un pin con su ícono; al tocarlo crece, se pone verde menta y muestra su nombre; se acerca con dos dedos y el botón de la esquina lo abre en pantalla completa; las posiciones están en `MapaCampus.ubicaciones`) → tarjeta con el lugar elegido → **2 Día** → **3 Hora** (pestañas Mañana, Mediodía y Tarde) → resumen → "Enviar propuesta". **No hay ningún campo para escribir**.
+
+**Tarjetas del chat:** cada tarjeta de propuesta o confirmación lleva un **minimapa** (`MiniMapaCampus`) con el pin del lugar.
+
+**Chat (también rediseñado):** encabezado azul marino con la foto de la publicación, burbujas agrupadas por autor, separadores "Hoy" / "Ayer" / fecha, pantalla vacía con mensajes sugeridos y barra de escritura redondeada. Keys nuevas: `EncuentroKeys.ampliarMapa`.
 
 **Tarjetas (hay cuatro clases):**
 
