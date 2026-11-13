@@ -22,7 +22,7 @@ abstract final class MapaCampus {
   static const double proporcion = 1720 / 1120;
 
   static const Map<String, Offset> ubicaciones = <String, Offset>{
-    'biblioteca': Offset(0.320, 0.4375), // Edificio H
+    'biblioteca': Offset(0.330, 0.405), // Edificio H, arriba del letrero
     'cafeteria': Offset(0.401, 0.539), // Número 5
     'centro-cultural': Offset(0.337, 0.629), // Número 1
     'centro-investigacion': Offset(0.233, 0.461), // Número 2
