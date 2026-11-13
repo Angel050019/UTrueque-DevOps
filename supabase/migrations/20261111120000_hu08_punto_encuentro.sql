@@ -80,11 +80,15 @@ comment on table public.puntos_encuentro is
 -- Lista inicial PROPUESTA por el equipo; la confirman los Product Owners
 -- (decisión 2 de la planeación). Si cambia, se edita aquí y se vuelve a correr.
 insert into public.puntos_encuentro (id, nombre, referencia, orden) values
-  ('biblioteca',  'Biblioteca - Entrada Principal', 'Frente a la puerta principal de la biblioteca', 1),
-  ('cafeteria',   'Cafetería - Área de mesas',      'Mesas junto a la barra de la cafetería',        2),
-  ('edificio-k',  'Edificio K - Planta baja',       'Vestíbulo de la planta baja del Edificio K',    3),
-  ('explanada',   'Explanada principal',            'Centro de la explanada, junto al asta bandera', 4),
-  ('acceso',      'Acceso principal - Vigilancia',  'Junto a la caseta de vigilancia de la entrada', 5)
+  ('biblioteca',           'Biblioteca - Entrada Principal', 'Edificio H, frente a la puerta principal',        1),
+  ('cafeteria',            'Cafetería - Área de mesas',      'Número 5 del mapa, mesas junto a la barra',       2),
+  ('edificio-k',           'Edificio K - Planta baja',       'Vestíbulo de la planta baja del Edificio K',      3),
+  ('explanada',            'Explanada principal',            'Junto al asta bandera, frente a la entrada',      4),
+  ('acceso',               'Acceso principal - Vigilancia',  'Junto a la caseta de vigilancia de la entrada',   5),
+  ('centro-cultural',      'Centro Cultural SER',            'Número 1 del mapa, en la entrada',                6),
+  ('centro-investigacion', 'Centro de Investigación',        'Número 2 del mapa, en la entrada',                7),
+  ('gimnasio',             'Gimnasio Auditorio',             'Número 4 del mapa, en la entrada principal',      8),
+  ('cancha',               'Cancha de fútbol',               'Número 3 del mapa, junto a la puerta de la reja', 9)
 on conflict (id) do update
   set nombre = excluded.nombre, referencia = excluded.referencia, orden = excluded.orden;
 
