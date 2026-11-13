@@ -41,6 +41,9 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
+          # Versión fija: Flutter 3.50 marca como obsoleto package:flutter/material.dart
+          # y el análisis estático fallaría en todos los archivos. Se actualiza a propósito, no sola.
+          flutter-version: '3.47.9'
           cache: true
 
       - name: Instalar dependencias
