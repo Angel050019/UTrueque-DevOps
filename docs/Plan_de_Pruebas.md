@@ -526,3 +526,26 @@ Archivo: [`app/test/api/chat_api_rest_test.dart`](../app/test/api/chat_api_rest_
 | CP-64 | Error del servidor y sin sesión | Todas | 500 / (ninguna) | Mensaje genérico sin IP; sin sesión, `SesionNoIniciadaFailure` y 0 peticiones |
 
 Las reglas de la base (solo los participantes leen y escriben; nadie envía a nombre del otro, edita ni borra mensajes; una conversación Vendida o borrada queda solo para leer; caracteres permitidos; 20 mensajes por minuto; páginas sin repetidos; mensajes en la publicación de Realtime) se probaron con 50 casos SQL en Postgres 16 antes de entregar la migración `20261106120000_hu07_chat.sql`.
+
+---
+
+## ANEXO. CASOS DEL API REST DE HU-08 (SPRINT 8)
+
+Archivo: [`app/test/api/encuentros_api_rest_test.dart`](../app/test/api/encuentros_api_rest_test.dart). Se ejercita la cadena real: caso de uso → creador (patrón Factory Method) → repositorio → `SupabaseClient` → HTTP simulado.
+
+| ID | Escenario (HU-08) | Endpoint | Respuesta simulada | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| CP-65 | Catálogo de lugares | `GET /rest/v1/puntos_encuentro?select=…&activo=eq.true&order=orden` | 200 | Solo pide los activos y en orden; interpreta nombre y referencia; la segunda vez no se vuelve a pedir |
+| CP-66 | Proponer | `POST /rest/v1/rpc/proponer_encuentro` | 200 (`"enc-9"`) | Solo manda `p_conversacion`, `p_punto` y `p_fecha_hora` en UTC (quién propone sale de la sesión) |
+| CP-67 | Lugar fuera del catálogo | — y `POST rpc/proponer_encuentro` | (ninguna) / 400 (`punto_no_permitido`) | El creador no lo envía; el servidor también lo rechaza: "Solo se permiten zonas seguras dentro de la UTSJR.", sin detalles internos |
+| CP-68 | Horario no permitido | — y `POST rpc/proponer_encuentro` | (ninguna) / 400 (`horario_no_permitido`) | Un sábado no se envía; el servidor también lo rechaza con el mensaje del horario |
+| CP-69 | Ya hay un encuentro activo | `POST rpc/proponer_encuentro` | 400 (`encuentro_activo`) | "Ya hay un punto de encuentro pendiente o confirmado…" |
+| CP-70 | Aceptar y rechazar | `POST /rest/v1/rpc/responder_encuentro` (2 veces) | 204 | Manda `p_encuentro` y `p_acepta` (`true` / `false`) |
+| CP-71 | Propia, vencida o ya respondida | `POST rpc/responder_encuentro` | 400 (`encuentro_propio`, `encuentro_vencido`, `encuentro_no_pendiente`) | Mensaje de cada motivo; la propia ni siquiera se envía |
+| CP-72 | Cancelar | `POST /rest/v1/rpc/cancelar_encuentro` | 204 / 400 (`encuentro_no_activo`, `encuentro_propio`) | Manda `p_encuentro`; "ya no está activo"; "Solo quien hizo la propuesta puede cancelarla…" |
+| CP-73 | Tarjetas de la conversación | `POST /rest/v1/rpc/encuentros_conversacion` | 200 | Manda `p_conversacion`; interpreta lugar, hora, estado y quién propuso |
+| CP-74 | Conversación ajena | `rpc/proponer_encuentro`, `responder_encuentro`, `cancelar_encuentro`, `encuentros_conversacion` | 403 (`42501`), 400 (`22P02`) | "No tienes acceso a esta conversación." sin detalles de RLS |
+| CP-75 | Conversación cerrada y spam | `POST rpc/proponer_encuentro` | 400 (`conversacion_cerrada`, `demasiados_mensajes`) | Mismos mensajes del chat |
+| CP-76 | Sin conexión, error del servidor y sin sesión | Todas | (ninguna) / 500 / (ninguna) | `SinConexionFailure` y 0 peticiones; mensaje genérico sin IP; `SesionNoIniciadaFailure` y 0 peticiones |
+
+Las reglas de la base (solo lugares del catálogo activo; horario de lunes a viernes de 7:00 a 20:00 hasta 14 días; un encuentro activo por conversación; nadie responde su propia propuesta; un tercero no ve, propone, acepta, rechaza ni cancela encuentros ajenos; nadie cambia un encuentro directamente ni fabrica una tarjeta con un mensaje directo; publicación Vendida sin cambios; las propuestas cuentan para el límite de 20 mensajes por minuto; el chat de HU-07 sigue igual) se probaron con 63 casos SQL en Postgres 16 antes de entregar la migración `20261111120000_hu08_punto_encuentro.sql`.

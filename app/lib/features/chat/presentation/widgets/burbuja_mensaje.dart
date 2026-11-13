@@ -6,44 +6,60 @@ import '../../domain/entities/mensaje.dart';
 import '../chat_keys.dart';
 
 /// Un mensaje del chat: los míos a la derecha en azul marino y los del otro
-/// a la izquierda en azul claro, con la hora abajo.
-// TODO(diseño): burbujas según Figma.
+/// a la izquierda en blanco, con la hora abajo a la derecha.
+///
+/// Si [continuacion] es `true`, el mensaje anterior es del mismo autor: se
+/// pega más a él y no lleva "colita" arriba.
 class BurbujaMensaje extends StatelessWidget {
-  const BurbujaMensaje({super.key, required this.mensaje, required this.esMio});
+  const BurbujaMensaje({super.key, required this.mensaje, required this.esMio, this.continuacion = false});
 
   final Mensaje mensaje;
   final bool esMio;
+  final bool continuacion;
 
   @override
   Widget build(BuildContext context) {
-    final Color fondo = esMio ? AppColores.primario : AppColores.primarioSuave;
     final Color letra = esMio ? AppColores.sobrePrimario : AppColores.texto;
+    const Radius grande = Radius.circular(18);
+    const Radius chica = Radius.circular(6);
     return Align(
       key: ChatKeys.burbuja(mensaje.id),
       alignment: esMio ? Alignment.centerRight : Alignment.centerLeft,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.78),
         child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 3),
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+          margin: EdgeInsets.only(top: continuacion ? 2 : 8),
+          padding: const EdgeInsets.fromLTRB(14, 9, 12, 7),
           decoration: BoxDecoration(
-            color: fondo,
+            color: esMio ? null : AppColores.superficie,
+            gradient: esMio
+                ? const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF0B5378), AppColores.primario],
+                  )
+                : null,
+            border: esMio ? null : Border.all(color: AppColores.borde),
             borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(16),
-              topRight: const Radius.circular(16),
-              bottomLeft: Radius.circular(esMio ? 16 : 4),
-              bottomRight: Radius.circular(esMio ? 4 : 16),
+              topLeft: !esMio && !continuacion ? chica : grande,
+              topRight: esMio && !continuacion ? chica : grande,
+              bottomLeft: grande,
+              bottomRight: grande,
             ),
+            boxShadow: const [BoxShadow(color: Color(0x0F033B56), blurRadius: 6, offset: Offset(0, 2))],
           ),
-          child: Column(
-            crossAxisAlignment: esMio ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
+          child: Wrap(
+            alignment: WrapAlignment.end,
+            crossAxisAlignment: WrapCrossAlignment.end,
+            spacing: 8,
             children: [
               Text(mensaje.texto, style: AppTexto.cuerpo(size: 15, color: letra)),
-              const SizedBox(height: 2),
-              Text(
-                formatearHora(mensaje.creadoEn),
-                style: AppTexto.cuerpo(size: 11, color: letra.withValues(alpha: 0.7)),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  formatearHora(mensaje.creadoEn),
+                  style: AppTexto.cuerpo(size: 11, color: esMio ? AppColores.acento : AppColores.textoSecundario),
+                ),
               ),
             ],
           ),

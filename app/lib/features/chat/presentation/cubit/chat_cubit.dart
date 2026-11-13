@@ -135,6 +135,13 @@ class ChatCubit extends Cubit<ChatState> {
     }
   }
 
+  /// HU-08: pide los mensajes más recientes sin recargar la pantalla. Se usa
+  /// después de proponer, responder o cancelar un encuentro, porque la
+  /// tarjeta la crea el servidor (si el tiempo real tarda, igual aparece).
+  Future<void> actualizar() async {
+    if (state is ChatListo) await _sincronizar();
+  }
+
   Future<void> _sincronizar() async {
     try {
       final PaginaMensajes pagina = await _obtener(state.conversacion.id);
