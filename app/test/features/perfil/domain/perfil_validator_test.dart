@@ -76,4 +76,21 @@ void main() {
       expect(validador.validarFoto(fotoGif()), const FotoFormatoInvalidoFailure());
     });
   });
+
+  group('SEGURIDAD: caracteres permitidos en el nombre', () {
+    const PerfilValidator v = PerfilValidator();
+
+    test('acepta acentos, ñ, punto y guion', () {
+      expect(v.validarNombre('Ma. José Núñez-Güemes'), isNull);
+    });
+
+    for (final String nombre in ['<script>', "O'Brien", 'Ana_López', 'Ana2', 'Ana 😀', 'Ana; López']) {
+      test('rechaza "$nombre" con el mensaje de caracteres', () {
+        expect(
+          v.validarNombre(nombre),
+          const NombreInvalidoFailure(PerfilValidator.mensajeNombreCaracteres),
+        );
+      });
+    }
+  });
 }

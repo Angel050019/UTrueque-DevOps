@@ -20,8 +20,8 @@ UTrueque no tiene un servidor propio. Su **API REST es la que expone Supabase**:
 | Servicio de Supabase | Endpoints que usa la app | Para qué |
 | --- | --- | --- |
 | Auth (GoTrue) | `POST /auth/v1/signup`, `POST /auth/v1/token?grant_type=password`, `POST /auth/v1/logout` | Registro, inicio y cierre de sesión |
-| PostgREST | `GET/PATCH /rest/v1/usuarios`, `/rest/v1/divisiones`, `/rest/v1/carreras` | Perfil del alumno y catálogos |
-| Storage | `POST /storage/v1/object/...` | Fotos de perfil y de publicaciones |
+| PostgREST | `GET/PATCH /rest/v1/usuarios`, `/rest/v1/divisiones`, `/rest/v1/carreras`, `GET /rest/v1/categorias`, `POST /rest/v1/publicaciones` | Perfil del alumno, catálogos y publicaciones |
+| Storage | `POST` y `DELETE /storage/v1/object/...` | Fotos de perfil y de publicaciones |
 
 Por eso, "probar el API REST" significa comprobar que **la app envía las peticiones correctas y reacciona bien a cada respuesta** del servidor (200, 204, 400, 422, sin red).
 
@@ -35,8 +35,9 @@ Por eso, "probar el API REST" significa comprobar que **la app envía las petici
 | --- | --- | --- |
 | Autenticación institucional (`@utsjr.edu.mx`) | HU-01 | **Automatizado (7 casos AAA)** |
 | Perfil (división y carrera) | HU-02 | Planeado — Sprint 2 |
-| Publicaciones y catálogo | HU-03 / HU-04 | Planeado — Sprints 3-4 |
-| Trueques y chat | HU-05+ | Planeado — Sprints 5-7 |
+| Publicaciones y catálogo | HU-03 / HU-04 | HU-03: **Automatizado (10 casos AAA, CP-08 a CP-17)** — Sprint 3; HU-04 (Feed y Detalle): **Automatizado (10 casos AAA, CP-18 a CP-27)** — Sprint 4 |
+| Búsqueda y filtros (división, carrera, categoría y palabras) | HU-05 (issue #5) | **Automatizado (8 casos AAA, CP-28 a CP-35)** — Sprint 5. Desde este sprint el Feed usa `POST /rest/v1/rpc/buscar_publicaciones`; CP-18 a CP-22 se actualizaron a esa función |
+| Mis publicaciones, chat y encuentros | HU-06+ | Planeado — Sprints 6-8 |
 
 ### 1.2 Estrategia: cómo se prueba el API sin depender de internet
 
@@ -398,18 +399,20 @@ test(
 
 ### 3.1 Dónde se aplica
 
-El Quality Gate se ejecuta en GitHub Actions ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) en cada push a `develop` y en cada Pull Request hacia `develop` o `main`:
+El Quality Gate se ejecuta en GitHub Actions ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml)) dentro del check obligatorio `validate`:
 
 1. `flutter analyze`: análisis estático del analizador de Dart.
 2. `flutter test --coverage`: pruebas unitarias y del API REST, con reporte `lcov.info`.
 3. **Gate de cobertura propio:** [`.github/scripts/quality_gate_cobertura.sh`](../.github/scripts/quality_gate_cobertura.sh) falla si la cobertura de dominio y datos es menor al 80 %.
-4. **SonarQube Cloud:** analiza `app/lib`, importa la cobertura y espera el resultado del Quality Gate (`sonar.qualitygate.wait=true`). Si el resultado es **FAILED**, el pipeline se detiene (Fail-Fast) y el PR no se puede integrar.
+4. **SonarQube Cloud** (`SonarSource/sonarqube-scan-action@v7`): analiza `app/lib`, importa la cobertura y espera el resultado del Quality Gate (`sonar.qualitygate.wait=true`). Si el resultado es **FAILED**, el pipeline se detiene (Fail-Fast) y el PR no se puede integrar.
+
+El plan **Free** de SonarQube Cloud solo analiza la rama principal del proyecto y los Pull Requests que apuntan a ella. Como el equipo integra todo en `develop`, en SonarQube Cloud la rama principal se llama `develop`. Por eso SonarQube corre en cada **push a `develop`** y en cada **PR hacia `develop`**; en los PR de `develop` hacia `main` (releases) se omite con un aviso, y ahí siguen aplicando los pasos 1 a 3.
 
 La configuración está en [`app/sonar-project.properties`](../app/sonar-project.properties).
 
 ### 3.2 Condiciones del Quality Gate
 
-SonarQube Cloud analiza Dart/Flutter de forma nativa. En el plan gratuito se usa el gate **"Sonar way"**, que evalúa el **código nuevo** de cada Pull Request:
+SonarQube Cloud analiza Dart/Flutter de forma nativa (también en el plan Free). En el plan Free no se pueden crear gates personalizados, así que se usa el gate integrado **"Sonar way"**, que evalúa el **código nuevo** (en un PR, las líneas que cambió el PR):
 
 | Condición (código nuevo) | Umbral |
 | --- | --- |
@@ -420,17 +423,17 @@ SonarQube Cloud analiza Dart/Flutter de forma nativa. En el plan gratuito se usa
 | Cobertura de pruebas | ≥ 80 % |
 | Líneas duplicadas | ≤ 3 % |
 
-Como el plan gratuito no permite crear gates personalizados, el equipo agrega su propio **gate de cobertura en CI** (paso 3), que exige ≥ 80 % sobre todo el código de dominio y datos, no solo sobre el código nuevo.
+Las condiciones de cobertura y duplicación solo se evalúan cuando hay al menos 20 líneas nuevas. Como complemento, el equipo tiene su propio **gate de cobertura en CI** (paso 3), que exige ≥ 80 % sobre todo el código de dominio y datos, no solo sobre el código nuevo.
 
-**Exclusiones de cobertura:** `main.dart`, pantallas (`presentation/pages`), widgets visuales y rutas. Esas partes se validan con pruebas de widgets e integración, no con pruebas unitarias.
+**Exclusiones de cobertura:** `main.dart`, pantallas (`presentation/pages`), widgets visuales (`presentation/widgets` y `core/widgets`), tema y rutas. Esas partes se validan con pruebas de widgets e integración, no con pruebas unitarias. Los Cubits, casos de uso, repositorios y utilidades sí cuentan.
 
 ### 3.3 Activación (una sola vez, la hace el dueño del repo)
 
-1. Entrar a [sonarcloud.io](https://sonarcloud.io) con GitHub e importar la organización `angel050019` y el repositorio `UTrueque-DevOps`.
+1. Entrar a [sonarcloud.io](https://sonarcloud.io) con GitHub, importar la organización `angel050019` (plan **Free**) y analizar el repositorio `UTrueque-DevOps`.
 2. En el proyecto: *Administration → Analysis Method* → desactivar **Automatic Analysis** (el análisis lo hace GitHub Actions).
-3. Generar un token en *My Account → Security* y guardarlo en GitHub como secreto `SONAR_TOKEN` (*Settings → Secrets and variables → Actions*).
-4. Verificar que `sonar.organization` y `sonar.projectKey` en `app/sonar-project.properties` coincidan con lo que muestra SonarQube Cloud.
-5. (Opcional) En GitHub, *Settings → Branches*: marcar el check **"Análisis, pruebas y Quality Gate"** como obligatorio para `develop` y `main`.
+3. En *Administration → Branches and Pull Requests*: renombrar la rama principal (`main`) a **`develop`**.
+4. Generar un token en *My Account → Security* y guardarlo en GitHub como secreto `SONAR_TOKEN` (*Settings → Secrets and variables → Actions*).
+5. Verificar que `sonar.organization` y `sonar.projectKey` en `app/sonar-project.properties` coincidan con lo que muestra SonarQube Cloud (*Information* del proyecto).
 
 Mientras no exista el secreto, el pipeline corre las pruebas y el gate de cobertura, y muestra un aviso de que se omitió SonarQube.
 
@@ -458,3 +461,91 @@ La investigación completa está en el documento *Investigación Técnica: Tipos
 - **Pruebas sobre el código real:** los casos AAA ya no son ejemplos teóricos; prueban el registro y el inicio de sesión que usa la app y se ejecutan solos en cada Pull Request.
 - **El Quality Gate protege `main`:** si una prueba falla, la cobertura baja del 80 % o SonarQube detecta bugs o vulnerabilidades nuevas, el cambio no se integra.
 - **Siguiente paso:** al terminar HU-02 (perfil con división y carrera) se agregarán sus casos de API para `PATCH /rest/v1/usuarios` y las pruebas de RLS.
+
+---
+
+## ANEXO. CASOS DEL API REST DE HU-05 (SPRINT 5)
+
+Archivo: [`app/test/api/publicaciones_api_rest_test.dart`](../app/test/api/publicaciones_api_rest_test.dart) (grupo "API REST de búsqueda y filtros").
+
+| ID | Escenario (HU-05) | Endpoint | Respuesta simulada | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| CP-28 | Búsqueda con resultados | `POST /rest/v1/rpc/buscar_publicaciones` | 200 | Manda `p_texto` limpio y solo los filtros puestos; interpreta las publicaciones |
+| CP-29 | Búsqueda sin coincidencias | `POST /rest/v1/rpc/buscar_publicaciones` | 200 con `[]` | Página vacía, sin cursor (la app muestra "sin resultados") |
+| CP-30 | Filtros combinados con paginación | `POST /rest/v1/rpc/buscar_publicaciones` (2 veces) | 200 (20) / 200 (3) | La segunda página manda el cursor y los MISMOS filtros |
+| CP-31 | Solo categoría | `POST /rest/v1/rpc/buscar_publicaciones` | 200 | No manda `p_texto` ni filtros vacíos |
+| CP-32 | Error del servidor | `POST /rest/v1/rpc/buscar_publicaciones` | 500 | `CargarPublicacionesFailure` sin IP ni nombres internos |
+| CP-33 | Sin conexión | — | (ninguna) | `SinConexionFailure`, 0 peticiones al API |
+| CP-34 | Sin sesión | — | (ninguna) | `SesionNoIniciadaFailure`, 0 peticiones al API |
+| CP-35 | Texto vacío o muy largo | `POST /rest/v1/rpc/buscar_publicaciones` (2 veces) | 200 | Solo espacios no manda `p_texto`; más de 100 caracteres se recorta |
+
+Las reglas de la base (sin acentos, plural, prefijo, todas las palabras, paginación sin repetidas, `anon` sin permiso) se probaron con 18 casos SQL en Postgres 16 antes de entregar la migración `20261019120000_hu05_busqueda_filtros.sql`.
+
+---
+
+## ANEXO. CASOS DEL API REST DE HU-06 (SPRINT 6)
+
+Archivo: [`app/test/api/publicaciones_api_rest_test.dart`](../app/test/api/publicaciones_api_rest_test.dart) (grupo "API REST de 'Mis publicaciones'").
+
+| ID | Escenario (HU-06) | Endpoint | Respuesta simulada | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| CP-36 | Mis publicaciones activas | `POST /rest/v1/rpc/mis_publicaciones` | 200 | Solo manda `p_limite` (el dueño sale de la sesión); interpreta las publicaciones con su portada |
+| CP-37 | Finalizadas con paginación | `POST /rest/v1/rpc/mis_publicaciones` (2 veces) | 200 (20) / 200 (2) | Manda `p_finalizadas: true`; la segunda página manda el cursor |
+| CP-38 | Reservar | `PATCH /rest/v1/publicaciones?id=eq.<id>` + `GET /rest/v1/publicaciones_detalle` | 200 / 200 | El PATCH lleva SOLO `{"estado":"reservado"}`; regresa la publicación con categoría y dueño |
+| CP-39 | Transición rechazada por el servidor | `PATCH /rest/v1/publicaciones` | 400 (`23514`, pista `transicion_no_permitida`) | `AccionNoPermitidaFailure` sin detalles internos |
+| CP-40 | Editar | `PATCH /rest/v1/publicaciones` + `GET` detalle + `DELETE /storage/v1/object/publicaciones` | 200 / 200 / 200 | El PATCH no lleva dueño ni estado; se borra de Storage la foto que se quitó |
+| CP-41 | Editar una Reservada / saltarse la app | `PATCH /rest/v1/publicaciones` | 400 (pista `publicacion_no_editable`), 400 (`23514`) y 409 (`23503`) | `AccionNoPermitidaFailure`, `PublicacionRechazadaFailure` y error en la categoría; no se borra ninguna foto |
+| CP-42 | Borrar con sus fotos | `DELETE /rest/v1/publicaciones?id=eq.<id>&select=fotos` + `DELETE /storage/v1/object/publicaciones` | 200 / 200 | Primero la publicación y después sus fotos |
+| CP-43 | Publicación de otro estudiante | `PATCH` y `DELETE /rest/v1/publicaciones` | 200 con `[]` (RLS) y 403 (`42501`); 400 (`22P02`) | `ModificarSinPermisoFailure`; id inválido → "ya no está disponible"; no se borran fotos |
+| CP-44 | Error del servidor | `POST rpc/mis_publicaciones`, `PATCH` | 500 | Mensajes genéricos sin IP; si solo falla la segunda lectura, el cambio guardado se respeta |
+| CP-45 | Sin conexión | — | (ninguna) | `SinConexionFailure` al listar, cambiar estado, editar y borrar; 0 peticiones |
+| CP-46 | Sin sesión | — | (ninguna) | `SesionNoIniciadaFailure`, 0 peticiones al API |
+| CP-47 | Editar con foto nueva y guardado fallido | `POST /storage/v1/object/publicaciones/<uid>/…` + `PATCH` + `DELETE` Storage | 200 / 500 / 200 | Se sube solo la foto nueva y, como falló el guardado, se borra solo esa |
+
+Las reglas de la base (un estudiante no puede cambiar, editar ni borrar la publicación de otro ni sus fotos; solo una Disponible se edita o se borra; transiciones del patrón State; Finalizadas sin repetidas por páginas; `anon` sin permiso) se probaron con 42 casos SQL en Postgres 16 antes de entregar la migración `20261029120000_hu06_mis_publicaciones.sql`.
+
+---
+
+## ANEXO. CASOS DEL API REST DE HU-07 (SPRINT 7)
+
+Archivo: [`app/test/api/chat_api_rest_test.dart`](../app/test/api/chat_api_rest_test.dart). El WebSocket de Supabase Realtime se simula con un `StreamController`.
+
+| ID | Escenario (HU-07) | Endpoint | Respuesta simulada | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| CP-53 | Contactar al vendedor | `POST /rest/v1/rpc/iniciar_conversacion` | 200 (`"conv-9"`) | Solo manda `p_publicacion` (quién escribe sale de la sesión); la conversación lleva el nombre del vendedor y la publicación |
+| CP-54 | Rechazos al iniciar | `POST /rest/v1/rpc/iniciar_conversacion` | 400 (pistas `perfil_incompleto`, `publicacion_no_disponible`, `publicacion_propia`), 404 (`publicacion_no_encontrada`), 400 (`22P02`) | Mensaje del motivo, sin detalles internos |
+| CP-55 | Bandeja | `POST /rest/v1/rpc/mis_conversaciones` | 200 | Manda `p_limite: 50`; interpreta portada, estado, no leídos y "Publicación eliminada" |
+| CP-56 | Historial por páginas | `POST /rest/v1/rpc/mensajes_conversacion` (2 veces) | 200 (30) / 200 (2) | La segunda página manda el cursor |
+| CP-57 | Enviar y recibir | `POST /rest/v1/mensajes` + tiempo real | 201 | Solo manda `conversacion_id` y `texto` (sin autor), sin espacios de sobra; el mensaje llega por el tiempo real (patrón Observer) |
+| CP-58 | Mensaje inválido | — y `POST /rest/v1/mensajes` | (ninguna) / 400 (`mensaje_caracteres`) / 400 (`23514`) | La app no envía `<script>`; el servidor también lo rechaza; longitud fuera de 1 a 500 |
+| CP-59 | Marcar como leída | `POST /rest/v1/rpc/marcar_conversacion_leida` | 204 | Manda `p_conversacion` |
+| CP-60 | Globo de no leídos | `POST /rest/v1/rpc/total_no_leidos` | 200 (`3`) | El globo muestra 3 |
+| CP-61 | Conversación cerrada y spam | `POST /rest/v1/mensajes` | 400 (`conversacion_cerrada`, `demasiados_mensajes`) | Mensaje de solo lectura y "Estás enviando muchos mensajes…" |
+| CP-62 | Conversación ajena | `POST /rest/v1/mensajes`, `rpc/mensajes_conversacion` | 403 (`42501`), 400 (`22P02`) | "No tienes acceso a esta conversación." sin detalles de RLS |
+| CP-63 | Sin conexión | — | (ninguna) | Iniciar, bandeja, mensajes y enviar lanzan `SinConexionFailure`; marcar y el globo no avisan; 0 peticiones |
+| CP-64 | Error del servidor y sin sesión | Todas | 500 / (ninguna) | Mensaje genérico sin IP; sin sesión, `SesionNoIniciadaFailure` y 0 peticiones |
+
+Las reglas de la base (solo los participantes leen y escriben; nadie envía a nombre del otro, edita ni borra mensajes; una conversación Vendida o borrada queda solo para leer; caracteres permitidos; 20 mensajes por minuto; páginas sin repetidos; mensajes en la publicación de Realtime) se probaron con 50 casos SQL en Postgres 16 antes de entregar la migración `20261106120000_hu07_chat.sql`.
+
+---
+
+## ANEXO. CASOS DEL API REST DE HU-08 (SPRINT 8)
+
+Archivo: [`app/test/api/encuentros_api_rest_test.dart`](../app/test/api/encuentros_api_rest_test.dart). Se ejercita la cadena real: caso de uso → creador (patrón Factory Method) → repositorio → `SupabaseClient` → HTTP simulado.
+
+| ID | Escenario (HU-08) | Endpoint | Respuesta simulada | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| CP-65 | Catálogo de lugares | `GET /rest/v1/puntos_encuentro?select=…&activo=eq.true&order=orden` | 200 | Solo pide los activos y en orden; interpreta nombre y referencia; la segunda vez no se vuelve a pedir |
+| CP-66 | Proponer | `POST /rest/v1/rpc/proponer_encuentro` | 200 (`"enc-9"`) | Solo manda `p_conversacion`, `p_punto` y `p_fecha_hora` en UTC (quién propone sale de la sesión) |
+| CP-67 | Lugar fuera del catálogo | — y `POST rpc/proponer_encuentro` | (ninguna) / 400 (`punto_no_permitido`) | El creador no lo envía; el servidor también lo rechaza: "Solo se permiten zonas seguras dentro de la UTSJR.", sin detalles internos |
+| CP-68 | Horario no permitido | — y `POST rpc/proponer_encuentro` | (ninguna) / 400 (`horario_no_permitido`) | Un sábado no se envía; el servidor también lo rechaza con el mensaje del horario |
+| CP-69 | Ya hay un encuentro activo | `POST rpc/proponer_encuentro` | 400 (`encuentro_activo`) | "Ya hay un punto de encuentro pendiente o confirmado…" |
+| CP-70 | Aceptar y rechazar | `POST /rest/v1/rpc/responder_encuentro` (2 veces) | 204 | Manda `p_encuentro` y `p_acepta` (`true` / `false`) |
+| CP-71 | Propia, vencida o ya respondida | `POST rpc/responder_encuentro` | 400 (`encuentro_propio`, `encuentro_vencido`, `encuentro_no_pendiente`) | Mensaje de cada motivo; la propia ni siquiera se envía |
+| CP-72 | Cancelar | `POST /rest/v1/rpc/cancelar_encuentro` | 204 / 400 (`encuentro_no_activo`, `encuentro_propio`) | Manda `p_encuentro`; "ya no está activo"; "Solo quien hizo la propuesta puede cancelarla…" |
+| CP-73 | Tarjetas de la conversación | `POST /rest/v1/rpc/encuentros_conversacion` | 200 | Manda `p_conversacion`; interpreta lugar, hora, estado y quién propuso |
+| CP-74 | Conversación ajena | `rpc/proponer_encuentro`, `responder_encuentro`, `cancelar_encuentro`, `encuentros_conversacion` | 403 (`42501`), 400 (`22P02`) | "No tienes acceso a esta conversación." sin detalles de RLS |
+| CP-75 | Conversación cerrada y spam | `POST rpc/proponer_encuentro` | 400 (`conversacion_cerrada`, `demasiados_mensajes`) | Mismos mensajes del chat |
+| CP-76 | Sin conexión, error del servidor y sin sesión | Todas | (ninguna) / 500 / (ninguna) | `SinConexionFailure` y 0 peticiones; mensaje genérico sin IP; `SesionNoIniciadaFailure` y 0 peticiones |
+
+Las reglas de la base (solo lugares del catálogo activo; horario de lunes a viernes de 7:00 a 20:00 hasta 14 días; un encuentro activo por conversación; nadie responde su propia propuesta; un tercero no ve, propone, acepta, rechaza ni cancela encuentros ajenos; nadie cambia un encuentro directamente ni fabrica una tarjeta con un mensaje directo; publicación Vendida sin cambios; las propuestas cuentan para el límite de 20 mensajes por minuto; el chat de HU-07 sigue igual) se probaron con 63 casos SQL en Postgres 16 antes de entregar la migración `20261111120000_hu08_punto_encuentro.sql`.
