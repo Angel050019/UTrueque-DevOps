@@ -12,6 +12,7 @@ class EncuentroKeys {
 
   // Hoja "Proponer punto de encuentro"
   static const Key hoja = Key('encuentro_hoja');
+  static const Key ampliarMapa = Key('encuentro_ampliar_mapa');
   static const Key hojaCargando = Key('encuentro_hoja_cargando');
   static const Key hojaError = Key('encuentro_hoja_error');
   static const Key hojaReintentar = Key('encuentro_hoja_reintentar');

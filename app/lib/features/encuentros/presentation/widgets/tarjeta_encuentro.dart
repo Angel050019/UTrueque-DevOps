@@ -6,6 +6,7 @@ import '../../../chat/domain/entities/mensaje.dart';
 import '../../domain/entities/encuentro.dart';
 import '../../domain/validators/horario_encuentro.dart';
 import '../encuentro_keys.dart';
+import 'mapa_campus.dart';
 
 /// Tarjeta de encuentro dentro del chat (HU-08). La crea el servidor como
 /// un mensaje con tipo: propuesta, aceptado (la tarjeta de confirmación),
@@ -15,7 +16,6 @@ import '../encuentro_keys.dart';
 /// cancelar) y en la de CONFIRMACIÓN (cancelar), y solo si el encuentro
 /// sigue en ese estado. Si el encuentro todavía no se carga, se muestra el
 /// texto del mensaje.
-// TODO(diseño): tarjetas según Figma.
 class TarjetaEncuentro extends StatelessWidget {
   const TarjetaEncuentro({
     super.key,
@@ -77,99 +77,169 @@ class TarjetaEncuentro extends StatelessWidget {
         ((esPropuesta && estado == EstadoEncuentro.propuesto) || (_esConfirmacion && estado == EstadoEncuentro.aceptado)) &&
         e.puedeCancelar(miId, ahora);
 
+    final bool apagada = mensaje.tipo == TipoMensaje.rechazado || mensaje.tipo == TipoMensaje.cancelado;
+    final Color colorTema = _esConfirmacion
+        ? const Color(0xFF1E8A55)
+        : apagada
+            ? AppColores.textoSecundario
+            : AppColores.primario;
+
     return Center(
       key: EncuentroKeys.tarjeta(mensaje.id),
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.86),
         child: Container(
           width: double.infinity,
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          padding: const EdgeInsets.all(14),
+          margin: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: _esConfirmacion ? AppColores.acentoSuave : AppColores.superficie,
+            color: AppColores.superficie,
             borderRadius: BorderRadius.circular(AppMedidas.radioTarjeta),
             border: Border.all(color: _esConfirmacion ? AppColores.acento : AppColores.borde),
+            boxShadow: const [BoxShadow(color: Color(0x14033B56), blurRadius: 12, offset: Offset(0, 4))],
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Row(
-                children: [
-                  Icon(_icono, color: AppColores.primario, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(_titulo, style: AppTexto.subtitulo(size: 15))),
-                  Text(formatearHora(mensaje.creadoEn), style: AppTexto.cuerpo(size: 11)),
-                ],
-              ),
-              const SizedBox(height: 8),
-              if (e == null)
-                Text(mensaje.texto, style: AppTexto.cuerpo(size: 14, color: AppColores.texto))
-              else ...[
-                Text(e.punto.nombre, style: AppTexto.subtitulo(size: 15)),
-                if (e.punto.referencia.isNotEmpty)
-                  Text(e.punto.referencia, style: AppTexto.cuerpo(size: 13)),
-                const SizedBox(height: 4),
-                Text(
-                  HorarioEncuentro.formatear(e.fechaHora),
-                  style: AppTexto.cuerpo(size: 14, color: AppColores.texto),
+              // Franja superior con el tipo de tarjeta.
+              Container(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                decoration: BoxDecoration(
+                  color: _esConfirmacion
+                      ? AppColores.acentoSuave
+                      : apagada
+                          ? AppColores.fondo
+                          : AppColores.primarioSuave,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(AppMedidas.radioTarjeta - 1)),
                 ),
-                if (mensaje.tipo == TipoMensaje.rechazado || mensaje.tipo == TipoMensaje.cancelado)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text(
-                      mensaje.esDe(miId)
-                          ? (mensaje.tipo == TipoMensaje.rechazado ? 'La rechazaste.' : 'Lo cancelaste.')
-                          : (mensaje.tipo == TipoMensaje.rechazado ? 'La rechazó el otro estudiante.' : 'Lo canceló el otro estudiante.'),
-                      style: AppTexto.cuerpo(size: 13),
-                    ),
-                  ),
-              ],
-              if (textoEstado != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  textoEstado,
-                  key: EncuentroKeys.estadoTarjeta(mensaje.id),
-                  style: AppTexto.cuerpo(size: 13, color: AppColores.primario, peso: FontWeight.w600),
-                ),
-              ],
-              if (e != null && puedeResponder) ...[
-                const SizedBox(height: 10),
-                Row(
+                child: Row(
                   children: [
-                    Expanded(
-                      child: FilledButton(
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(color: colorTema, shape: BoxShape.circle),
+                      child: Icon(_icono, color: AppColores.sobrePrimario, size: 16),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(_titulo, style: AppTexto.subtitulo(size: 14, color: colorTema))),
+                    Text(formatearHora(mensaje.creadoEn), style: AppTexto.cuerpo(size: 11)),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (e == null)
+                      Text(mensaje.texto, style: AppTexto.cuerpo(size: 14, color: AppColores.texto))
+                    else ...[
+                      if (!apagada) ...[
+                        MiniMapaCampus(puntoId: e.punto.id, nombre: e.punto.nombre),
+                        const SizedBox(height: 12),
+                      ],
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(MapaCampus.iconoDe(e.punto.id), size: 20, color: colorTema),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(e.punto.nombre, style: AppTexto.subtitulo(size: 15)),
+                                if (e.punto.referencia.isNotEmpty)
+                                  Text(e.punto.referencia, style: AppTexto.cuerpo(size: 12)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.schedule_rounded, size: 20, color: colorTema),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              HorarioEncuentro.formatear(e.fechaHora),
+                              style: AppTexto.cuerpo(size: 14, color: AppColores.texto, peso: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (apagada)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            mensaje.esDe(miId)
+                                ? (mensaje.tipo == TipoMensaje.rechazado ? 'La rechazaste.' : 'Lo cancelaste.')
+                                : (mensaje.tipo == TipoMensaje.rechazado
+                                    ? 'La rechazó el otro estudiante.'
+                                    : 'Lo canceló el otro estudiante.'),
+                            style: AppTexto.cuerpo(size: 13),
+                          ),
+                        ),
+                    ],
+                    if (textoEstado != null) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: puedeResponder ? AppColores.acentoSuave : AppColores.fondo,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: puedeResponder ? AppColores.acento : AppColores.borde),
+                        ),
+                        child: Text(
+                          textoEstado,
+                          key: EncuentroKeys.estadoTarjeta(mensaje.id),
+                          style: AppTexto.cuerpo(size: 12, color: AppColores.primario, peso: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                    if (e != null && puedeResponder) ...[
+                      const SizedBox(height: 12),
+                      FilledButton.icon(
                         key: EncuentroKeys.aceptar(mensaje.id),
                         onPressed: habilitada ? () => onAceptar(e) : null,
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColores.primario,
                           foregroundColor: AppColores.sobrePrimario,
+                          minimumSize: const Size.fromHeight(44),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppMedidas.radioCampo)),
                         ),
-                        child: const Text('Aceptar punto de encuentro', textAlign: TextAlign.center),
+                        icon: const Icon(Icons.check_rounded, size: 18),
+                        label: const Text('Aceptar punto de encuentro'),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton(
-                      key: EncuentroKeys.rechazar(mensaje.id),
-                      onPressed: habilitada ? () => onRechazar(e) : null,
-                      style: OutlinedButton.styleFrom(foregroundColor: AppColores.primario),
-                      child: const Text('Rechazar'),
-                    ),
+                      const SizedBox(height: 6),
+                      OutlinedButton(
+                        key: EncuentroKeys.rechazar(mensaje.id),
+                        onPressed: habilitada ? () => onRechazar(e) : null,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColores.primario,
+                          minimumSize: const Size.fromHeight(40),
+                          side: const BorderSide(color: AppColores.borde),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppMedidas.radioCampo)),
+                        ),
+                        child: const Text('Rechazar'),
+                      ),
+                    ],
+                    if (e != null && puedeCancelar) ...[
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          key: EncuentroKeys.cancelar(mensaje.id),
+                          onPressed: habilitada ? () => onCancelar(e) : null,
+                          style: TextButton.styleFrom(foregroundColor: AppColores.error),
+                          child: Text(esPropuesta ? 'Cancelar propuesta' : 'Cancelar encuentro'),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-              ],
-              if (e != null && puedeCancelar) ...[
-                const SizedBox(height: 6),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    key: EncuentroKeys.cancelar(mensaje.id),
-                    onPressed: habilitada ? () => onCancelar(e) : null,
-                    style: TextButton.styleFrom(foregroundColor: AppColores.error),
-                    child: Text(esPropuesta ? 'Cancelar propuesta' : 'Cancelar encuentro'),
-                  ),
-                ),
-              ],
+              ),
             ],
           ),
         ),
@@ -179,7 +249,6 @@ class TarjetaEncuentro extends StatelessWidget {
 }
 
 /// Escenario 2: aviso fijo arriba del chat con el encuentro confirmado.
-// TODO(diseño): aviso fijo según Figma.
 class AvisoEncuentroConfirmado extends StatelessWidget {
   const AvisoEncuentroConfirmado({super.key, required this.encuentro});
 
@@ -189,18 +258,40 @@ class AvisoEncuentroConfirmado extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: EncuentroKeys.avisoConfirmado,
-      padding: const EdgeInsets.symmetric(horizontal: AppMedidas.margen, vertical: 10),
-      color: AppColores.acentoSuave,
+      margin: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [AppColores.acentoSuave, Color(0xFFD3FBE7)]),
+        borderRadius: BorderRadius.circular(AppMedidas.radioCampo),
+        border: Border.all(color: AppColores.acento),
+      ),
       child: Row(
         children: [
-          const Icon(Icons.place_rounded, color: AppColores.primario, size: 20),
-          const SizedBox(width: 8),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: const BoxDecoration(color: AppColores.primario, shape: BoxShape.circle),
+            child: Icon(MapaCampus.iconoDe(encuentro.punto.id), color: AppColores.acento, size: 18),
+          ),
+          const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              'Encuentro confirmado: ${encuentro.punto.nombre}, ${HorarioEncuentro.formatear(encuentro.fechaHora)}',
-              style: AppTexto.cuerpo(size: 13, color: AppColores.primario, peso: FontWeight.w600),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Encuentro confirmado: ${encuentro.punto.nombre}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTexto.subtitulo(size: 13, color: AppColores.primario),
+                ),
+                Text(
+                  HorarioEncuentro.formatear(encuentro.fechaHora),
+                  style: AppTexto.cuerpo(size: 12, color: AppColores.texto),
+                ),
+              ],
             ),
           ),
+          const Icon(Icons.verified_rounded, color: Color(0xFF1E8A55), size: 22),
         ],
       ),
     );
