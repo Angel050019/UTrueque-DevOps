@@ -16,6 +16,10 @@ import '../../../encuentros/presentation/encuentro_keys.dart';
 import '../../../encuentros/presentation/widgets/hoja_proponer_encuentro.dart';
 import '../../../encuentros/presentation/widgets/tarjeta_encuentro.dart';
 import '../../../perfil/presentation/widgets/avatar_perfil.dart';
+import '../../../reputacion/domain/entities/trato.dart';
+import '../../../reputacion/presentation/cubit/tratos_por_calificar_cubit.dart';
+import '../../../reputacion/presentation/widgets/estrellas.dart';
+import '../../../reputacion/presentation/widgets/hoja_calificar.dart';
 import '../../domain/entities/conversacion.dart';
 import '../../domain/entities/mensaje.dart';
 import '../../domain/validators/mensaje_validator.dart';
@@ -140,6 +144,16 @@ class _ChatPageState extends State<ChatPage> {
     _alCambiarEncuentro(await encuentros.cancelar(encuentro));
   }
 
+  // ---------------------------------------------------------------------
+  // HU-09: calificar el trato
+  // ---------------------------------------------------------------------
+
+  Future<void> _calificar(TratoPorCalificar trato) async {
+    final TratosPorCalificarCubit tratos = context.read<TratosPorCalificarCubit>();
+    final bool quitar = await HojaCalificar.abrir(context, trato);
+    if (quitar) tratos.quitar(trato.ventaId);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -160,6 +174,14 @@ class _ChatPageState extends State<ChatPage> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _Encabezado(conversacion: state.conversacion),
+                      // HU-09, Escenario 3: "Califica tu trato con …".
+                      BlocBuilder<TratosPorCalificarCubit, TratosPorCalificarState>(
+                        builder: (context, tratos) {
+                          final TratoPorCalificar? trato = tratos.deConversacion(state.conversacion.id);
+                          if (trato == null) return const SizedBox.shrink();
+                          return AvisoCalificarTrato(trato: trato, onCalificar: () => _calificar(trato));
+                        },
+                      ),
                       // HU-08, Escenario 2: aviso fijo del encuentro confirmado.
                       if (confirmado != null) AvisoEncuentroConfirmado(encuentro: confirmado),
                       Expanded(child: _contenido(context, state, encuentros)),
@@ -326,6 +348,8 @@ class _Encabezado extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: AppTexto.subtitulo(size: 16, color: AppColores.sobrePrimario),
                 ),
+                // HU-09, Escenario 6: la reputación del otro estudiante.
+                ReputacionDe(usuarioId: conversacion.otroId, claro: true),
                 Row(
                   children: [
                     const Icon(Icons.sell_rounded, size: 13, color: AppColores.acento),

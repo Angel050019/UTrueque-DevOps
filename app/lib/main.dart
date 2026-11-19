@@ -67,6 +67,11 @@ import 'features/publicaciones/presentation/cubit/publicacion_cubit.dart';
 import 'features/publicaciones/presentation/pages/detalle_publicacion_page.dart';
 import 'features/publicaciones/presentation/pages/mis_publicaciones_page.dart';
 import 'features/publicaciones/presentation/pages/publicar_articulo_page.dart';
+import 'features/reputacion/data/datasources/reputacion_remote_datasource.dart';
+import 'features/reputacion/data/repositories/reputacion_repository_impl.dart';
+import 'features/reputacion/domain/repositories/reputacion_repository.dart';
+import 'features/reputacion/domain/usecases/casos_de_uso_reputacion.dart';
+import 'features/reputacion/presentation/cubit/tratos_por_calificar_cubit.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -114,6 +119,10 @@ class UTruequeApp extends StatelessWidget {
     final EncuentrosRepository encuentrosRepository = EncuentrosRepositoryImpl(
       EncuentrosRemoteDataSourceImpl(Supabase.instance.client),
     );
+    // HU-09: reputación (patrón Strategy).
+    final ReputacionRepository reputacionRepository = ReputacionRepositoryImpl(
+      ReputacionRemoteDataSourceImpl(Supabase.instance.client),
+    );
 
     // Factory Method: cada pantalla de perfil recibe su propio PerfilCubit.
     PerfilCubit crearPerfilCubit() => PerfilCubit(
@@ -130,6 +139,9 @@ class UTruequeApp extends StatelessWidget {
         RepositoryProvider<ChatRepository>.value(value: chatRepository),
         // HU-08: la hoja "Proponer punto de encuentro" arma sus casos de uso.
         RepositoryProvider<EncuentrosRepository>.value(value: encuentrosRepository),
+        // HU-09: la reputación en Mi perfil, el Detalle y el chat, y las
+        // hojas "¿A quién se lo vendiste?" y "Calificar".
+        RepositoryProvider<ReputacionRepository>.value(value: reputacionRepository),
         // HU-06: la hoja "Gestionar publicación" arma sus casos de uso con
         // el repositorio y la red, y avisa de los cambios.
         RepositoryProvider<NetworkInfo>.value(value: networkInfo),
@@ -246,6 +258,12 @@ class UTruequeApp extends StatelessWidget {
                       obtenerEncuentros: ObtenerEncuentros(encuentrosRepository, networkInfo),
                       enviarSolicitud: EnviarSolicitudEncuentro(encuentrosRepository, networkInfo),
                       escuchar: EscucharChat(chatRepository),
+                    )..cargar(),
+                  ),
+                  // HU-09: aviso "Califica tu trato" cuando ya se vendió.
+                  BlocProvider(
+                    create: (_) => TratosPorCalificarCubit(
+                      ObtenerTratosPorCalificar(reputacionRepository, networkInfo),
                     )..cargar(),
                   ),
                 ],

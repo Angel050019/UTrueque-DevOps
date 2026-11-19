@@ -8,6 +8,7 @@ import '../../../../core/widgets/primary_button.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../reputacion/presentation/widgets/seccion_reputacion.dart';
 import '../../domain/entities/perfil.dart';
 import '../cubit/perfil_cubit.dart';
 import '../cubit/perfil_state.dart';
@@ -134,6 +135,9 @@ class MiPerfilPage extends StatelessWidget {
                     ],
                     const SizedBox(height: 20),
                     TarjetaPerfil(perfil: perfil),
+                    const SizedBox(height: 14),
+                    // HU-09: reputación, tratos por calificar y calificaciones recibidas.
+                    SeccionReputacion(usuarioId: perfil.id),
                     const SizedBox(height: 14),
                     const _MisPublicaciones(),
                   ],
