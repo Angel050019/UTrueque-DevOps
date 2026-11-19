@@ -549,3 +549,24 @@ Archivo: [`app/test/api/encuentros_api_rest_test.dart`](../app/test/api/encuentr
 | CP-76 | Sin conexión, error del servidor y sin sesión | Todas | (ninguna) / 500 / (ninguna) | `SinConexionFailure` y 0 peticiones; mensaje genérico sin IP; `SesionNoIniciadaFailure` y 0 peticiones |
 
 Las reglas de la base (solo lugares del catálogo activo; horario de lunes a viernes de 7:00 a 20:00 hasta 14 días; un encuentro activo por conversación; nadie responde su propia propuesta; un tercero no ve, propone, acepta, rechaza ni cancela encuentros ajenos; nadie cambia un encuentro directamente ni fabrica una tarjeta con un mensaje directo; publicación Vendida sin cambios; las propuestas cuentan para el límite de 20 mensajes por minuto; el chat de HU-07 sigue igual) se probaron con 63 casos SQL en Postgres 16 antes de entregar la migración `20261111120000_hu08_punto_encuentro.sql`.
+
+## ANEXO. CASOS DEL API REST DE HU-09 (SPRINT 9)
+
+Archivo: [`app/test/api/reputacion_api_rest_test.dart`](../app/test/api/reputacion_api_rest_test.dart). Se ejercita la cadena real: caso de uso → repositorio → `SupabaseClient` → HTTP simulado. El promedio que se muestra lo calcula la app con el patrón Strategy (promedio ajustado con menos de 5 calificaciones).
+
+| ID | Escenario (HU-09) | Endpoint | Respuesta simulada | Resultado esperado |
+| --- | --- | --- | --- | --- |
+| CP-77 | ¿A quién se lo vendiste? | `POST /rest/v1/rpc/compradores_posibles` | 200 | Manda solo `p_publicacion`; interpreta nombre y conversación de quien le escribió |
+| CP-78 | Vender con y sin comprador | `POST /rest/v1/rpc/marcar_vendida` (2 veces) | 200 (`"venta-1"`) / 200 (`null`) | Manda `p_publicacion` y `p_conversacion` (vacía si fue fuera de UTrueque); la publicación queda Vendida; quién vende sale de la sesión |
+| CP-79 | Comprador no válido, ya vendida o no existe | `POST rpc/marcar_vendida` | 400 (`comprador_no_valido`, `transicion_no_permitida`), 404 (`publicacion_no_encontrada`) | "Elige a alguien que te escribió por esta publicación." sin detalles; una Vendida ni siquiera se envía (patrón State) |
+| CP-80 | Tratos por calificar | `POST /rest/v1/rpc/tratos_por_calificar` | 200 | Interpreta el trato, la portada como URL pública y el vencimiento a 14 días |
+| CP-81 | Calificar (comprador y vendedor) | `POST /rest/v1/rpc/calificar` (2 veces) | 200 (`"cal-1"`) | Manda `p_venta`, `p_estrellas` y `p_comentario` limpio (o `null`); nunca a quién se califica |
+| CP-82 | Reputación del otro | `POST /rest/v1/rpc/reputacion_usuario` (4 veces) | 200 | Solo llegan los conteos por estrella; una de 5 → "4.3 · 1 calificación"; 5 calificaciones → promedio real "4.6"; sin calificaciones → "Nuevo en UTrueque · Sin calificaciones aún" |
+| CP-83 | Calificaciones recibidas | `POST /rest/v1/rpc/calificaciones_recibidas` (2 veces) | 200 | Pide una de más para saber si hay otra página; la siguiente manda `p_antes_de` y `p_antes_id` de la última |
+| CP-84 | Calificar dos veces | `POST rpc/calificar` | 400 (`calificacion_duplicada`) | "Ya calificaste este trato." |
+| CP-85 | Plazo vencido | — y `POST rpc/calificar` | (ninguna) / 400 (`plazo_vencido`) | Pasados 14 días no se envía; el servidor también lo rechaza: "Ya pasaron los 14 días para calificar este trato." |
+| CP-86 | Trato o publicación ajenos | `rpc/calificar`, `marcar_vendida`, `reputacion_usuario` | 403 (`42501`), 400 (`22P02`) | "No tienes acceso a este trato." sin detalles de RLS |
+| CP-87 | Comentario o estrellas no válidos | — y `POST rpc/calificar` | (ninguna) / 400 (`comentario_caracteres`, `comentario_largo`, `estrellas_invalidas`) | No se envía desde la app; el servidor también lo rechaza con el mensaje de cada regla |
+| CP-88 | Sin conexión, error del servidor y sin sesión | Todas | (ninguna) / 500 / (ninguna) | `SinConexionFailure` y 0 peticiones; mensaje genérico sin IP; `SesionNoIniciadaFailure` y 0 peticiones |
+
+Las reglas de la base (solo el dueño marca Vendida desde Disponible o Reservada; el comprador debe haber escrito por esa publicación; nadie se califica a sí mismo ni califica dos veces el mismo trato; un tercero no califica, no ve ventas ni calificaciones ajenas una por una; nadie edita, borra ni inserta calificaciones o ventas directamente; 1 a 5 estrellas; comentario opcional de hasta 200 caracteres con la lista del Sprint 6; 14 días para calificar; `anon` sin acceso; el chat de HU-07 y el punto de encuentro de HU-08 se cierran al vender) se probaron con 60 casos SQL en Postgres 16 antes de entregar la migración `20261119120000_hu09_reputacion.sql`.

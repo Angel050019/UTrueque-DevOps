@@ -69,10 +69,10 @@ Se eligió HU-09 porque, con el chat (HU-07) y el punto de encuentro (HU-08) lis
 | Base de datos: tablas `ventas` y `calificaciones`, reglas RLS y funciones (`compradores_posibles`, `marcar_vendida`, `calificar`, `tratos_por_calificar`, `reputacion_usuario`, `calificaciones_recibidas`) | Cadena Vega Jonathan | Develop Team |
 | Lógica: entidades, estrategias de reputación (patrón Strategy), validador de calificación, casos de uso, modelos y repositorio | Cadena Vega Jonathan | Develop Team |
 | Pruebas unitarias de dominio y datos, y casos AAA del API REST simulado (CP-77 a CP-88) | Cadena Vega Jonathan | Develop Team |
-| Estado: `CalificarCubit` (formulario), `ReputacionCubit` (resumen de un estudiante), `TratosPorCalificarCubit` y `CalificacionesRecibidasCubit` | Gonzalez Casarrubias Luis Angel | Develop Team |
-| Pantallas: hoja "¿A quién se lo vendiste?" al marcar Vendido, pantalla "Calificar", banner "Califica tu trato" en el chat y en Mi perfil, reputación en Mi perfil, Detalle y encabezado del chat, con Keys (`ReputacionKeys`) | Gonzalez Casarrubias Luis Angel | Develop Team |
+| Estado: `ElegirCompradorCubit` (hoja "¿A quién se lo vendiste?"), venta con comprador en `GestionarPublicacionCubit`, `CalificarCubit` (formulario), `ReputacionCubit` (resumen de un estudiante), `TratosPorCalificarCubit` y `CalificacionesRecibidasCubit` | Gonzalez Casarrubias Luis Angel | Develop Team |
+| Pantallas: hoja "¿A quién se lo vendiste?" al marcar Vendido, hoja "Calificar", banner "Califica tu trato" en el chat y en Mi perfil, reputación en Mi perfil, Detalle y encabezado del chat, con Keys (`ReputacionKeys`) | Gonzalez Casarrubias Luis Angel | Develop Team |
 | Pruebas de los Cubits (una por escenario Gherkin como mínimo) | Gonzalez Casarrubias Luis Angel | Develop Team |
-| Diseño en Figma de la pantalla Calificar, las estrellas y la reputación (guía `docs/Sprint9_Guia_Diseno.md`), y lo pendiente del chat, el mapa y las tarjetas del punto de encuentro | Diaz Huerta Diego Oziel | Product Owner / Diseño |
+| Diseño en Figma de la hoja Calificar, las estrellas y la reputación (guía `docs/Sprint9_Guia_Diseno.md`), y lo pendiente del chat, el mapa y las tarjetas del punto de encuentro | Diaz Huerta Diego Oziel | Product Owner / Diseño |
 | Revisar y aprobar el Pull Request hacia `develop` (mínimo 1 aprobación registrada, CI en verde) | Diaz Huerta Diego Oziel | Product Owner |
 | Validar manualmente HU-09 **con dos cuentas** (vender, calificar los dos, ver la reputación) | Torres Valeriano Jesus | Product Owner / Validación |
 | Aplicar en Supabase la migración de HU-09 **el mismo día** y comprobarla con la consulta del final del archivo (8 filas con "sí"); correr también la consulta del KPI | Orduña Garrido Jose Luis | Scrum Master |
@@ -188,16 +188,16 @@ Para construir confianza dentro de la comunidad de UTrueque
 
 | Escenario | Pruebas que lo cubren |
 | :--- | :--- |
-| 1. Vender eligiendo comprador | `casos_de_uso_reputacion_test` (MarcarVendida), `vender_cubit_test`, CP-77 (POST `rpc/compradores_posibles`), CP-78 (POST `rpc/marcar_vendida` → 200 con el id); SQL 1, 8, 9, 11 y 12 |
-| 2. Fuera de UTrueque | `vender_cubit_test`, CP-78 (id `null`); SQL 13 y 14 |
+| 1. Vender eligiendo comprador | `casos_de_uso_reputacion_test` (MarcarVendida), `vender_con_comprador_test`, `reputacion_cubits_test` (ElegirCompradorCubit), CP-77 (POST `rpc/compradores_posibles`), CP-78 (POST `rpc/marcar_vendida` → 200 con el id); SQL 1, 8, 9, 11 y 12 |
+| 2. Fuera de UTrueque | `vender_con_comprador_test`, CP-78 (id `null`); SQL 13 y 14 |
 | 3. Comprador califica | `calificacion_validator_test`, `calificar_cubit_test`, CP-80 (POST `rpc/tratos_por_calificar`), CP-81 (POST `rpc/calificar`); SQL 17, 27, 28 y 30 |
 | 4. Vendedor califica | `calificar_cubit_test`, CP-81; SQL 35 y 36 |
-| 5. Mi reputación | `estrategias_reputacion_test`, `calificaciones_recibidas_cubit_test`, CP-83 (POST `rpc/calificaciones_recibidas`); SQL 37, 56 a 58 |
-| 6. Reputación del otro | `reputacion_cubit_test`, `modelos_reputacion_test`, CP-82 (POST `rpc/reputacion_usuario`); SQL 40 a 42 |
-| 7. Sin calificaciones | `estrategias_reputacion_test` (sin calificaciones → nada), `reputacion_cubit_test`; SQL 43 |
+| 5. Mi reputación | `estrategias_reputacion_test`, `reputacion_cubits_test` (CalificacionesRecibidasCubit), CP-83 (POST `rpc/calificaciones_recibidas`); SQL 37, 56 a 58 |
+| 6. Reputación del otro | `reputacion_cubits_test` (ReputacionCubit), `modelos_reputacion_test`, CP-82 (POST `rpc/reputacion_usuario`); SQL 40 a 42 |
+| 7. Sin calificaciones | `estrategias_reputacion_test` (sin calificaciones → nada), `reputacion_cubits_test`; SQL 43 |
 | 8. Pocas calificaciones | `estrategias_reputacion_test` (ajustado, simple y selector) |
-| 9. Dos veces | `calificar_cubit_test`, CP-84 (400 `calificacion_duplicada`); SQL 29 |
-| 10. Plazo vencido | `trato_por_calificar_test`, CP-85 (400 `plazo_vencido`); SQL 47 y 48 |
+| 9. Dos veces | `calificar_cubit_test`, `reputacion_cubits_test` (TratosPorCalificarCubit), CP-84 (400 `calificacion_duplicada`); SQL 29 |
+| 10. Plazo vencido | `calificacion_validator_test` (TratoPorCalificar), `calificar_cubit_test`, CP-85 (400 `plazo_vencido`); SQL 47 y 48 |
 | 11. No permitidas | CP-86 (42501 → sin permiso), CP-79 (400 `comprador_no_valido`); SQL 2 a 7, 10, 16, 31 a 34, 38 a 41, 45, 46 y 49 a 55 |
 | 12. Comentario | `calificacion_validator_test`, `calificar_cubit_test`, CP-87 (400 `comentario_caracteres` / `comentario_largo`); SQL 20 a 26 |
 | 13. Sin conexión | todos los casos de uso, los Cubits, CP-88 (ninguna petición) |
