@@ -8,7 +8,7 @@ void main() {
   group('ResumenReputacionModel', () {
     test('lee los conteos aunque lleguen como texto o decimales', () {
       final ResumenReputacionModel m = ResumenReputacionModel.fromMap(
-        <String, dynamic>{'usuario_id': idVendedor, 'total': 4, 'una': 0, 'dos': '1', 'tres': 1.0, 'cuatro': null, 'cinco': 2},
+        const <String, dynamic>{'usuario_id': idVendedor, 'total': 4, 'una': 0, 'dos': '1', 'tres': 1.0, 'cuatro': null, 'cinco': 2},
         usuarioId: 'otro',
       );
 
@@ -23,7 +23,7 @@ void main() {
   });
 
   test('CompradorPosibleModel', () {
-    final CompradorPosibleModel m = CompradorPosibleModel.fromMap(<String, dynamic>{
+    final CompradorPosibleModel m = CompradorPosibleModel.fromMap(const <String, dynamic>{
       'conversacion_id': idConversacion,
       'comprador_id': idComprador,
       'comprador_nombre': 'Beto Ruiz',
@@ -37,7 +37,7 @@ void main() {
     expect(m.ultimoMensajeEn, DateTime.utc(2026, 11, 18, 16));
 
     final CompradorPosibleModel sinNombre =
-        CompradorPosibleModel.fromMap(<String, dynamic>{'conversacion_id': 'c', 'comprador_id': 'x'});
+        CompradorPosibleModel.fromMap(const <String, dynamic>{'conversacion_id': 'c', 'comprador_id': 'x'});
     expect(sinNombre.nombre, 'Estudiante de la UTSJR');
     expect(sinNombre.ultimoMensajeEn, isNull);
   });
@@ -78,7 +78,7 @@ void main() {
   });
 
   test('CalificacionRecibidaModel', () {
-    final CalificacionRecibida c = CalificacionRecibidaModel.fromMap(<String, dynamic>{
+    final CalificacionRecibida c = CalificacionRecibidaModel.fromMap(const <String, dynamic>{
       'id': 'c1',
       'estrellas': 5,
       'comentario': 'Muy puntual.',
