@@ -6,6 +6,7 @@ import '../../../../core/theme/app_theme.dart';
 import '../../../../core/utils/email_validator.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/app_ui.dart';
+import '../../../../core/widgets/filtros_texto.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../cubit/auth_cubit.dart';
 import '../cubit/auth_state.dart';
@@ -91,6 +92,7 @@ class _RegistroPageState extends State<RegistroPage> {
                         label: 'Correo institucional',
                         hint: 'tu.nombre@utsjr.edu.mx',
                         tipoTeclado: TextInputType.emailAddress,
+                        filtros: FiltrosTexto.correo,
                         textoError: _errorCorreo,
                       ),
                       const SizedBox(height: 18),

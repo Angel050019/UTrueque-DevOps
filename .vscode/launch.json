@@ -1,0 +1,44 @@
+{
+  // UTrueque: el botón Run (F5) carga las llaves de app/env.json.
+  // Este archivo va en UTrueque-DevOps/.vscode/launch.json (raíz del repo).
+  // No contiene llaves: cada quien tiene su propio app/env.json (no se sube).
+  "version": "0.2.0",
+  "configurations": [
+    
+    {
+      "name": "UTrueque (dispositivo elegido)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "app",
+      "program": "lib/main.dart",
+      "args": ["--dart-define-from-file=env.json"]
+    },
+    {
+      "name": "UTrueque (Chrome)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "app",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "args": ["--dart-define-from-file=env.json"]
+    },
+    {
+      "name": "UTrueque (emulador Android)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "app",
+      "program": "lib/main.dart",
+      "deviceId": "emulator-5554",
+      "args": ["--dart-define-from-file=env.json"]
+    },
+    {
+      "name": "UTrueque (profile, para medir rendimiento)",
+      "request": "launch",
+      "type": "dart",
+      "cwd": "app",
+      "program": "lib/main.dart",
+      "flutterMode": "profile",
+      "args": ["--dart-define-from-file=env.json"]
+    }
+  ]
+}

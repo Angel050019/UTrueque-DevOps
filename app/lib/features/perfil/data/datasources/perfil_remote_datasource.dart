@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/errors/failures.dart';
 import '../../domain/entities/foto_perfil.dart';
+import '../../domain/validators/perfil_validator.dart';
 import '../models/division_model.dart';
 import '../models/perfil_model.dart';
 
@@ -129,7 +130,11 @@ class PerfilRemoteDataSourceImpl implements PerfilRemoteDataSource {
     switch (e.code) {
       case '23503': // llave foránea: la carrera no es de esa división
         return const CarreraNoPerteneceFailure();
-      case '23514': // check: nombre fuera de 3–50 caracteres
+      case '23514': // check: nombre fuera de 3–50 caracteres o con signos
+        // SEGURIDAD: la base rechazó caracteres no permitidos.
+        if (e.hint == 'nombre_caracteres') {
+          return const NombreInvalidoFailure(PerfilValidator.mensajeNombreCaracteres);
+        }
         return const NombreInvalidoFailure(
           'El nombre debe tener entre ${AppConstants.nombreLongitudMinima} y '
           '${AppConstants.nombreLongitudMaxima} caracteres.',

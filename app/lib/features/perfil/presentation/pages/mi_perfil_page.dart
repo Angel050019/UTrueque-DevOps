@@ -8,6 +8,7 @@ import '../../../../core/widgets/primary_button.dart';
 import '../../../auth/domain/repositories/auth_repository.dart';
 import '../../../auth/presentation/cubit/auth_cubit.dart';
 import '../../../auth/presentation/cubit/auth_state.dart';
+import '../../../reputacion/presentation/widgets/seccion_reputacion.dart';
 import '../../domain/entities/perfil.dart';
 import '../cubit/perfil_cubit.dart';
 import '../cubit/perfil_state.dart';
@@ -135,7 +136,10 @@ class MiPerfilPage extends StatelessWidget {
                     const SizedBox(height: 20),
                     TarjetaPerfil(perfil: perfil),
                     const SizedBox(height: 14),
-                    const _PublicacionesVacias(),
+                    // HU-09: reputación, tratos por calificar y calificaciones recibidas.
+                    SeccionReputacion(usuarioId: perfil.id),
+                    const SizedBox(height: 14),
+                    const _MisPublicaciones(),
                   ],
                 ),
               ),
@@ -178,31 +182,45 @@ class MiPerfilPage extends StatelessWidget {
   }
 }
 
-class _PublicacionesVacias extends StatelessWidget {
-  const _PublicacionesVacias();
+/// Acceso a "Mis publicaciones" (HU-06).
+class _MisPublicaciones extends StatelessWidget {
+  const _MisPublicaciones();
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: AppColores.primarioSuave,
-        borderRadius: BorderRadius.circular(AppMedidas.radioTarjeta),
-      ),
-      child: Column(
-        children: [
-          Text(
-            'Aún no tienes publicaciones',
-            style: AppTexto.subtitulo(size: 14, color: AppColores.primario),
+    return Material(
+      color: AppColores.primarioSuave,
+      borderRadius: BorderRadius.circular(AppMedidas.radioTarjeta),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: PerfilKeys.misPublicacionesBoton,
+        onTap: () => Navigator.of(context).pushNamed(AppRoutes.misPublicaciones),
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              const Icon(Icons.inventory_2_outlined, color: AppColores.primario),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Mis publicaciones',
+                      style: AppTexto.subtitulo(size: 14, color: AppColores.primario),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Ve y administra los artículos que publicaste.',
+                      style: AppTexto.cuerpo(size: 13),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, color: AppColores.primario),
+            ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            'Muy pronto podrás publicar libros, calculadoras y más.',
-            textAlign: TextAlign.center,
-            style: AppTexto.cuerpo(size: 13),
-          ),
-        ],
+        ),
       ),
     );
   }

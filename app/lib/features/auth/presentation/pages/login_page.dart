@@ -5,6 +5,7 @@ import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/app_ui.dart';
+import '../../../../core/widgets/filtros_texto.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../domain/usecases/resolver_destino_inicial.dart';
 import '../cubit/auth_cubit.dart';
@@ -80,6 +81,7 @@ class _LoginPageState extends State<LoginPage> {
                               label: 'Correo institucional',
                               hint: 'tu.nombre@utsjr.edu.mx',
                               tipoTeclado: TextInputType.emailAddress,
+                              filtros: FiltrosTexto.correo,
                             ),
                             const SizedBox(height: 18),
                             AppTextField(
