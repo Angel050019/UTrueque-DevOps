@@ -5,6 +5,10 @@ import '../../../../core/network/network_info.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/widgets/app_ui.dart';
 import '../../../../core/widgets/primary_button.dart';
+import '../../../reputacion/domain/entities/trato.dart';
+import '../../../reputacion/domain/repositories/reputacion_repository.dart';
+import '../../../reputacion/domain/usecases/casos_de_uso_reputacion.dart';
+import '../../../reputacion/presentation/widgets/hoja_elegir_comprador.dart';
 import '../../domain/entities/publicacion.dart';
 import '../../domain/repositories/publicacion_repository.dart';
 import '../../domain/usecases/borrar_publicacion.dart';
@@ -42,6 +46,8 @@ class _Salida {
 Future<ResultadoGestion?> gestionarPublicacion(BuildContext context, Publicacion publicacion) async {
   final PublicacionRepository repositorio = context.read<PublicacionRepository>();
   final NetworkInfo red = context.read<NetworkInfo>();
+  // HU-09: al vender se elige a quién (para que los dos se califiquen).
+  final ReputacionRepository reputacion = context.read<ReputacionRepository>();
   final _Salida? salida = await showModalBottomSheet<_Salida>(
     context: context,
     isScrollControlled: true,
@@ -55,6 +61,7 @@ Future<ResultadoGestion?> gestionarPublicacion(BuildContext context, Publicacion
         cambiarEstado: CambiarEstadoPublicacion(repositorio, red),
         borrarPublicacion: BorrarPublicacion(repositorio, red),
         obtenerDetalle: ObtenerDetallePublicacion(repositorio, red),
+        marcarVendida: MarcarVendida(reputacion, red),
       ),
       child: const _HojaGestionar(),
     ),
@@ -75,7 +82,17 @@ class _HojaGestionar extends StatelessWidget {
 
   Future<void> _escuchar(BuildContext context, GestionState state) async {
     final GestionarPublicacionCubit cubit = context.read<GestionarPublicacionCubit>();
-    if (state is GestionConfirmando) {
+    if (state is GestionConfirmando &&
+        state.operacion == OperacionGestion.marcarVendido &&
+        cubit.eligeComprador) {
+      // HU-09, Escenarios 1 y 2: "¿A quién se lo vendiste?" es la confirmación.
+      final EleccionVenta? eleccion = await elegirComprador(context, state.publicacion);
+      if (eleccion != null) {
+        await cubit.venderA(eleccion);
+      } else {
+        cubit.cancelar();
+      }
+    } else if (state is GestionConfirmando) {
       final bool confirmado = await _confirmar(context, state.operacion);
       if (confirmado) {
         await cubit.confirmar();

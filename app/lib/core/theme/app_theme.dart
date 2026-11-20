@@ -21,6 +21,10 @@ class AppColores {
   static const Color borde = Color(0xFFD6E0E6);
   static const Color error = Color(0xFFC62828);
   static const Color errorSuave = Color(0xFFFDECEC);
+
+  /// HU-09: estrellas de la reputación.
+  static const Color estrella = Color(0xFFF2B01E);
+  static const Color estrellaSuave = Color(0xFFFFF4D6);
 }
 
 /// Estilos de texto: Poppins para títulos y botones, Inter para el resto.

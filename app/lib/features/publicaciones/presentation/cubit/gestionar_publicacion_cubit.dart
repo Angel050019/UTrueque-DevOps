@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/errors/failures.dart';
+import '../../../reputacion/domain/entities/trato.dart';
+import '../../../reputacion/domain/usecases/casos_de_uso_reputacion.dart';
 import '../../domain/entities/publicacion.dart';
 import '../../domain/errors/publicacion_failures.dart';
 import '../../domain/usecases/borrar_publicacion.dart';
@@ -18,9 +20,11 @@ class GestionarPublicacionCubit extends Cubit<GestionState> {
     required CambiarEstadoPublicacion cambiarEstado,
     required BorrarPublicacion borrarPublicacion,
     ObtenerDetallePublicacion? obtenerDetalle,
+    MarcarVendida? marcarVendida,
   })  : _cambiarEstado = cambiarEstado,
         _borrar = borrarPublicacion,
         _obtenerDetalle = obtenerDetalle,
+        _marcarVendida = marcarVendida,
         super(GestionLista(publicacion));
 
   final CambiarEstadoPublicacion _cambiarEstado;
@@ -29,6 +33,13 @@ class GestionarPublicacionCubit extends Cubit<GestionState> {
   /// Para recargar la publicación cuando el servidor dice que su estado ya
   /// cambió (por ejemplo, se vendió desde otro dispositivo).
   final ObtenerDetallePublicacion? _obtenerDetalle;
+
+  /// HU-09: vender eligiendo al comprador. Si no se da, "Marcar como
+  /// Vendido" funciona como en HU-06.
+  final MarcarVendida? _marcarVendida;
+
+  /// HU-09: ¿al confirmar la venta se pregunta a quién se le vendió?
+  bool get eligeComprador => _marcarVendida != null;
 
   /// El estudiante tocó una operación. Si es Vender o Borrar, primero se
   /// pide confirmar; si no, se envía de una vez.
@@ -51,6 +62,35 @@ class GestionarPublicacionCubit extends Cubit<GestionState> {
     final GestionState actual = state;
     if (actual is! GestionConfirmando) return;
     await _ejecutar(actual.publicacion, actual.operacion);
+  }
+
+  /// HU-09, Escenarios 1 y 2: el vendedor eligió a quién se lo vendió (o
+  /// "fuera de UTrueque") en lugar de solo confirmar.
+  Future<void> venderA(EleccionVenta eleccion) async {
+    final GestionState actual = state;
+    final MarcarVendida? vender = _marcarVendida;
+    if (actual is! GestionConfirmando || actual.operacion != OperacionGestion.marcarVendido) return;
+    if (vender == null) {
+      await _ejecutar(actual.publicacion, actual.operacion);
+      return;
+    }
+    final Publicacion publicacion = actual.publicacion;
+    _emitir(GestionEnviando(publicacion, OperacionGestion.marcarVendido));
+    try {
+      final ResultadoVenta resultado = await vender(publicacion, eleccion);
+      _emitir(GestionTerminada(
+        publicacion,
+        OperacionGestion.marcarVendido,
+        actualizada: resultado.publicacion,
+        mensaje: resultado.mensaje,
+      ));
+    } on AccionNoPermitidaFailure catch (falla) {
+      _emitir(GestionError(await _recargar(publicacion), falla));
+    } on Failure catch (falla) {
+      _emitir(GestionError(publicacion, falla));
+    } catch (_) {
+      _emitir(GestionError(publicacion, const GestionarPublicacionFailure()));
+    }
   }
 
   /// "Cancelar" en la confirmación: no se envía nada.

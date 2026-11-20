@@ -94,15 +94,20 @@ class GestionEnviando extends GestionState {
 /// La operación salió bien. [actualizada] es cómo quedó la publicación,
 /// o `null` si se borró.
 class GestionTerminada extends GestionState {
-  const GestionTerminada(super.publicacion, this.operacion, {this.actualizada});
+  const GestionTerminada(super.publicacion, this.operacion, {this.actualizada, String? mensaje})
+      : _mensaje = mensaje;
 
   final OperacionGestion operacion;
   final Publicacion? actualizada;
 
-  String get mensaje => operacion.mensajeExito;
+  /// HU-09: al vender eligiendo al comprador el mensaje cambia
+  /// ("Listo. Ya pueden calificarse.").
+  final String? _mensaje;
+
+  String get mensaje => _mensaje ?? operacion.mensajeExito;
 
   @override
-  List<Object?> get props => [publicacion, operacion, actualizada];
+  List<Object?> get props => [publicacion, operacion, actualizada, _mensaje];
 }
 
 /// La operación falló. [publicacion] puede venir recargada si el servidor

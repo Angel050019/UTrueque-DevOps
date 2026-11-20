@@ -10,6 +10,7 @@ import '../../../../core/widgets/aviso_pantalla.dart';
 import '../../../../core/widgets/primary_button.dart';
 import '../../../chat/presentation/contactar_vendedor.dart';
 import '../../../perfil/presentation/widgets/avatar_perfil.dart';
+import '../../../reputacion/presentation/widgets/estrellas.dart';
 import '../../domain/entities/modalidad.dart';
 import '../../domain/entities/publicacion.dart';
 import '../cubit/detalle_publicacion_cubit.dart';
@@ -350,6 +351,8 @@ class _TarjetaDueno extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(nombre, style: AppTexto.subtitulo(size: 15)),
+                // HU-09, Escenario 6: la reputación del vendedor.
+                ReputacionDe(usuarioId: publicacion.usuarioId),
                 for (final String linea in academico)
                   Text(linea, style: AppTexto.cuerpo(size: 13)),
               ],
